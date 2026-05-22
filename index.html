@@ -764,7 +764,10 @@ body::after {
       </div>
 
       <div class="feedback-panel" id="p2Feedback"></div>
-      <button class="btn-main btn-secondary" id="btnCheckP2" disabled>✔ COMPROBAR DIAGRAMA</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-main" id="btnCheckP2" disabled style="flex:2;min-width:180px;">✔ COMPROBAR DIAGRAMA</button>
+        <button class="btn-main btn-secondary" id="btnClearP2" style="flex:1;min-width:120px;border-color:var(--warn);color:var(--warn);">🗑 LIMPIAR TODO</button>
+      </div>
     </div>
 
   </div>
@@ -1548,7 +1551,14 @@ function renderDiagram(problem) {
     div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('drag-over'); });
     div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
     div.addEventListener('drop', e => { e.preventDefault(); div.classList.remove('drag-over'); dropOnZone(z.id); });
-    div.addEventListener('click', () => dropOnZone(z.id));
+    div.addEventListener('click', () => {
+      // If zone is already filled and nothing is being dragged, clicking it clears it
+      if(gs.p2Placements[z.id] && !gs.draggingTermId && !gs.p2Checked) {
+        clearZone(z.id);
+      } else {
+        dropOnZone(z.id);
+      }
+    });
 
     container.appendChild(div);
   });
@@ -1573,6 +1583,54 @@ function renderPalette(problem) {
       div.style.outline = '2px solid var(--accent)';
     });
     area.appendChild(div);
+  });
+}
+
+function clearZone(zoneId) {
+  const problem = PROBLEMS[gs.problemIdx];
+  const termId = gs.p2Placements[zoneId];
+  if(!termId) return;
+
+  delete gs.p2Placements[zoneId];
+
+  // Reset zone appearance
+  const zoneEl = document.getElementById('zone_' + zoneId);
+  const z = problem.diagram.zones.find(z => z.id === zoneId);
+  const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
+  if(zoneEl) {
+    zoneEl.className = 'drop-zone';
+    zoneEl.querySelector('.zone-label').textContent = '?';
+    if(node.type === 'entity') zoneEl.style.borderRadius = '4px';
+    else if(node.type === 'relation') zoneEl.style.borderRadius = '0';
+    else zoneEl.style.borderRadius = '50%';
+    // brief flash to confirm unplace
+    zoneEl.style.borderColor = 'rgba(255,204,0,0.7)';
+    setTimeout(() => zoneEl.style.borderColor = '', 300);
+  }
+
+  // Re-enable palette token
+  const ptEl = document.getElementById('pt_' + termId);
+  if(ptEl) {
+    ptEl.classList.remove('placed');
+    ptEl.style.outline = 'none';
+  }
+  // If this token was the one selected/dragging, reset that too
+  if(gs.draggingTermId === termId) gs.draggingTermId = null;
+
+  // Disable check button since not all zones are filled anymore
+  document.getElementById('btnCheckP2').disabled = true;
+}
+
+function clearAllZones() {
+  const problem = PROBLEMS[gs.problemIdx];
+  problem.diagram.zones.forEach(z => {
+    if(gs.p2Placements[z.id]) clearZone(z.id);
+  });
+  // Reset any token that was selected/highlighted but not dropped anywhere
+  gs.draggingTermId = null;
+  document.querySelectorAll('.palette-token').forEach(p => {
+    p.style.outline = 'none';
+    p.classList.remove('placed');
   });
 }
 
@@ -1628,6 +1686,7 @@ function dropOnZone(zoneId) {
 function checkPhase2() {
   if(gs.p2Checked) return;
   gs.p2Checked = true;
+  document.getElementById('btnClearP2').disabled = true;
 
   const problem = PROBLEMS[gs.problemIdx];
   let correct = 0, wrong = 0;
@@ -1718,6 +1777,8 @@ function loadProblem(idx) {
   document.getElementById('btnCheckP2').textContent = '✔ COMPROBAR DIAGRAMA';
   document.getElementById('btnCheckP2').onclick = checkPhase2;
   document.getElementById('btnCheckP2').disabled = true;
+  document.getElementById('btnClearP2').disabled = false;
+  document.getElementById('btnClearP2').onclick = clearAllZones;
 
   renderProblemText(problem);
   renderTokens(problem);
