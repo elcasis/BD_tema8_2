@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ER-BUILDER: Construye Diagramas E-R</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d1f;
+  --bg2: #12122a;
+  --panel: #16163a;
+  --border: #2a2a5a;
+  --accent: #00e5ff;
+  --accent2: #ff4dff;
+  --accent3: #b3ff4d;
+  --warn: #ffcc00;
+  --red: #ff3355;
+  --text: #dde0ff;
+  --muted: #5a5a8a;
+  --white: #ffffff;
+
+  --col-entity: #1a3a6a;
+  --col-entity-border: #4da6ff;
+  --col-entity-text: #a8d4ff;
+  --col-relation: #3a1a5a;
+  --col-relation-border: #cc66ff;
+  --col-relation-text: #e0aaff;
+  --col-attr: #1a3a2a;
+  --col-attr-border: #44dd88;
+  --col-attr-text: #99ffcc;
+  --col-attr-derived: #2a3a1a;
+  --col-attr-derived-border: #aacc44;
+  --col-attr-multi: #1a2a3a;
+  --col-attr-multi-border: #4488ff;
+  --col-weakent: #3a2a1a;
+  --col-weakent-border: #ffaa44;
+  --col-weakent-text: #ffddaa;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Grid bg */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 16px 16px 60px; }
+
+/* ============ TITLE ============ */
+.title-bar {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+.game-logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px, 3vw, 22px);
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--accent), 0 0 50px rgba(0,229,255,0.4);
+  letter-spacing: 3px;
+  line-height: 1.5;
+}
+.game-sub {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* ============ SCREENS ============ */
+.screen { display: none; }
+.screen.active { display: block; animation: fadein 0.4s ease; }
+@keyframes fadein { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ============ PROGRESS HUD ============ */
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 18px;
+  margin-bottom: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hud-score {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: var(--accent3);
+}
+.hud-label { font-size: 10px; color: var(--muted); font-family: 'Press Start 2P', monospace; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+.hud-prob {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--accent2);
+}
+.hud-phase {
+  font-size: 11px;
+  font-family: 'Press Start 2P', monospace;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.3);
+  color: var(--accent);
+}
+.prog-bar-wrap { flex: 1; min-width: 100px; }
+.prog-bar-bg { background: var(--bg2); border-radius: 4px; height: 8px; overflow: hidden; }
+.prog-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 4px; transition: width 0.4s ease; }
+
+/* ============ PROBLEM CARD ============ */
+.problem-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.problem-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+}
+.problem-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--accent2);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.problem-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.6;
+}
+.problem-text .highlight {
+  background: rgba(0,229,255,0.12);
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: inline-block;
+  margin: 2px 2px;
+  font-weight: 800;
+}
+.problem-text .highlight:hover { background: rgba(0,229,255,0.22); }
+.problem-text .highlight.tagged-entity { background: rgba(77,166,255,0.2); border-color: var(--col-entity-border); color: var(--col-entity-text); }
+.problem-text .highlight.tagged-relation { background: rgba(204,102,255,0.2); border-color: var(--col-relation-border); color: var(--col-relation-text); }
+.problem-text .highlight.tagged-attr { background: rgba(68,221,136,0.2); border-color: var(--col-attr-border); color: var(--col-attr-text); }
+
+/* ============ PHASE 1: CLASSIFY ============ */
+.instruction-box {
+  background: rgba(0,229,255,0.05);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.instruction-box strong { color: var(--accent); }
+
+.tokens-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.token {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  user-select: none;
+  position: relative;
+}
+.token:hover { transform: translateY(-2px); }
+.token.unclassified {
+  background: var(--bg2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.token.unclassified:hover { border-color: var(--muted); }
+.token.type-entity {
+  background: var(--col-entity);
+  border-color: var(--col-entity-border);
+  color: var(--col-entity-text);
+}
+.token.type-relation {
+  background: var(--col-relation);
+  border-color: var(--col-relation-border);
+  color: var(--col-relation-text);
+}
+.token.type-attr {
+  background: var(--col-attr);
+  border-color: var(--col-attr-border);
+  color: var(--col-attr-text);
+}
+.token.correct-anim { animation: pop-correct 0.4s ease; }
+.token.wrong-anim { animation: shake-token 0.4s ease; }
+@keyframes pop-correct { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+@keyframes shake-token { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+.type-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.type-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 2px solid;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+.type-btn-entity { background: rgba(77,166,255,0.1); border-color: var(--col-entity-border); color: var(--col-entity-text); }
+.type-btn-entity:hover, .type-btn-entity.selected { background: rgba(77,166,255,0.3); }
+.type-btn-relation { background: rgba(204,102,255,0.1); border-color: var(--col-relation-border); color: var(--col-relation-text); }
+.type-btn-relation:hover, .type-btn-relation.selected { background: rgba(204,102,255,0.3); }
+.type-btn-attr { background: rgba(68,221,136,0.1); border-color: var(--col-attr-border); color: var(--col-attr-text); }
+.type-btn-attr:hover, .type-btn-attr.selected { background: rgba(68,221,136,0.3); }
+
+.legend-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.legend-shape {
+  width: 28px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Legend shapes */
+.ls-rect { border: 2px solid var(--col-entity-border); border-radius: 3px; background: var(--col-entity); color: var(--col-entity-text); }
+.ls-diamond { width: 22px; height: 22px; background: var(--col-relation); border: 2px solid var(--col-relation-border); transform: rotate(45deg); }
+.ls-oval { border: 2px solid var(--col-attr-border); border-radius: 50%; background: var(--col-attr); color: var(--col-attr-text); }
+
+/* ============ PHASE 2: DIAGRAM ============ */
+.diagram-instruction {
+  background: rgba(179,255,77,0.05);
+  border: 1px solid rgba(179,255,77,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.diagram-instruction strong { color: var(--accent3); }
+
+.diagram-workspace {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Palette of draggable tokens */
+.palette {
+  width: 200px;
+  flex-shrink: 0;
+}
+.palette-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.palette-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.palette-token {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: grab;
+  border: 2px solid;
+  transition: all 0.15s;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.palette-token:hover { transform: translateX(3px); }
+.palette-token.placed { opacity: 0.3; cursor: default; pointer-events: none; }
+.palette-token.type-entity { background: var(--col-entity); border-color: var(--col-entity-border); color: var(--col-entity-text); }
+.palette-token.type-relation { background: var(--col-relation); border-color: var(--col-relation-border); color: var(--col-relation-text); }
+.palette-token.type-attr { background: var(--col-attr); border-color: var(--col-attr-border); color: var(--col-attr-text); }
+.pt-shape { font-size: 12px; }
+
+/* SVG canvas */
+.canvas-wrap {
+  flex: 1;
+  min-width: 280px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.diagram-svg {
+  width: 100%;
+  display: block;
+}
+
+/* Drop zones */
+.drop-zone {
+  position: absolute;
+  border: 2px dashed rgba(255,255,255,0.15);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  font-weight: 700;
+  transition: all 0.2s;
+  cursor: pointer;
+  overflow: hidden;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: rgba(0,229,255,0.5);
+  background: rgba(0,229,255,0.05);
+  color: rgba(0,229,255,0.5);
+}
+.drop-zone.filled {
+  border-style: solid;
+  cursor: default;
+}
+.drop-zone.filled-entity { background: var(--col-entity); border-color: var(--col-entity-border); }
+.drop-zone.filled-relation { background: var(--col-relation); border-color: var(--col-relation-border); }
+.drop-zone.filled-attr { background: var(--col-attr); border-color: var(--col-attr-border); }
+.drop-zone.correct { animation: zone-correct 0.5s ease; }
+.drop-zone.wrong { animation: zone-wrong 0.5s ease; }
+@keyframes zone-correct { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 20px rgba(68,221,136,0.6)} }
+@keyframes zone-wrong { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 20px rgba(255,51,85,0.6)} }
+
+.zone-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.3;
+  pointer-events: none;
+  padding: 2px 4px;
+}
+.filled-entity .zone-label { color: var(--col-entity-text); }
+.filled-relation .zone-label { color: var(--col-relation-text); }
+.filled-attr .zone-label { color: var(--col-attr-text); }
+
+/* ============ FEEDBACK ============ */
+.feedback-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-top: 14px;
+  display: none;
+  animation: fadein 0.3s ease;
+}
+.feedback-panel.show { display: block; }
+.feedback-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.feedback-correct .feedback-title { color: var(--accent3); }
+.feedback-wrong .feedback-title { color: var(--red); }
+.feedback-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.fb-item {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid;
+}
+.fb-ok { background: rgba(68,221,136,0.1); border-color: var(--col-attr-border); color: var(--col-attr-text); }
+.fb-wrong { background: rgba(255,51,85,0.1); border-color: var(--red); color: #ff8899; }
+.fb-hint { font-size: 13px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
+/* ============ BUTTONS ============ */
+.btn-main {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: transparent;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+  box-shadow: 0 0 12px rgba(0,229,255,0.15);
+}
+.btn-main:hover {
+  background: rgba(0,229,255,0.08);
+  box-shadow: 0 0 25px rgba(0,229,255,0.35);
+  transform: translateY(-1px);
+}
+.btn-main:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.btn-secondary {
+  border-color: var(--accent2);
+  color: var(--accent2);
+  box-shadow: 0 0 12px rgba(255,77,255,0.15);
+}
+.btn-secondary:hover {
+  background: rgba(255,77,255,0.08);
+  box-shadow: 0 0 25px rgba(255,77,255,0.35);
+}
+
+/* ============ START SCREEN ============ */
+.start-content { text-align: center; padding: 20px 0; }
+.start-emoji { font-size: 70px; animation: float 3s ease-in-out infinite; margin: 16px 0; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+.start-desc { font-size: 15px; color: var(--muted); max-width: 520px; margin: 0 auto 28px; line-height: 1.7; }
+
+.elements-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 20px 0 28px;
+  text-align: left;
+}
+.el-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.el-icon { flex-shrink: 0; }
+.el-name { font-size: 13px; font-weight: 800; }
+.el-desc { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+/* SVG shapes in legend */
+.shape-rect { width:36px;height:22px;border:2px solid var(--col-entity-border);border-radius:2px;background:var(--col-entity);flex-shrink:0; }
+.shape-diamond { width:22px;height:22px;border:2px solid var(--col-relation-border);background:var(--col-relation);transform:rotate(45deg);flex-shrink:0; }
+.shape-oval { width:36px;height:22px;border:2px solid var(--col-attr-border);border-radius:50%;background:var(--col-attr);flex-shrink:0; }
+.shape-oval-dash { width:36px;height:22px;border:2px dashed var(--col-attr-derived-border);border-radius:50%;background:var(--col-attr-derived);flex-shrink:0; }
+.shape-oval-double { width:36px;height:22px;border:2px solid var(--col-attr-multi-border);border-radius:50%;background:var(--col-attr-multi);outline:2px solid var(--col-attr-multi-border);outline-offset:2px;flex-shrink:0; }
+.shape-rect-double { width:36px;height:22px;border:2px solid var(--col-weakent-border);border-radius:2px;background:var(--col-weakent);outline:2px solid var(--col-weakent-border);outline-offset:2px;flex-shrink:0; }
+
+/* ============ RESULTS SCREEN ============ */
+.results-content { text-align: center; padding: 10px 0; }
+.result-emoji { font-size: 64px; margin: 10px 0; }
+.result-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px, 3vw, 22px);
+  margin-bottom: 12px;
+}
+.result-score-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 16px 0;
+}
+.result-score-val {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(36px, 8vw, 56px);
+  color: var(--accent2);
+  text-shadow: 0 0 20px var(--accent2);
+  display: block;
+}
+.result-score-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  display: block;
+  margin-bottom: 8px;
+}
+.result-grade {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  padding: 8px 18px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 12px;
+}
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+.rs-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 8px;
+}
+.rs-val {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: var(--accent);
+  display: block;
+}
+.rs-lbl { font-size: 11px; color: var(--muted); display: block; margin-top: 4px; }
+
+/* ============ PHASE STEPPER ============ */
+.phase-stepper {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+.phase-step {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.phase-step.done { background: var(--accent3); }
+.phase-step.active { background: var(--accent); animation: step-pulse 1s ease-in-out infinite; }
+@keyframes step-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.phase-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ============ PHASE 1 SCORE ============ */
+.p1-score-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.p1-result-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* ============ CONFETTI ============ */
+.confetti-piece {
+  position: fixed;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 999;
+  animation: conf-fall var(--dur) linear var(--delay) forwards;
+}
+@keyframes conf-fall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity:1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity:0; }
+}
+
+@media (max-width: 600px) {
+  .palette { width: 100%; }
+  .diagram-workspace { flex-direction: column; }
+  .canvas-wrap { min-height: 320px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="title-bar">
+    <div class="game-logo">ER-BUILDER</div>
+    <div class="game-sub">Construye Diagramas Entidad-Relación</div>
+  </div>
+
+  <!-- ========== START SCREEN ========== -->
+  <div class="screen active" id="startScreen">
+    <div class="start-content">
+      <div class="start-emoji">🗂️</div>
+      <p class="start-desc">
+        Se te presentará un enunciado real. Primero identifica qué son <strong style="color:var(--col-entity-text)">entidades</strong>, <strong style="color:var(--col-relation-text)">relaciones</strong> y <strong style="color:var(--col-attr-text)">atributos</strong>. Luego arrastra cada elemento al lugar correcto del diagrama.
+      </p>
+
+      <div class="elements-legend">
+        <div class="el-card">
+          <div class="shape-rect"></div>
+          <div><div class="el-name" style="color:var(--col-entity-text)">Entidad</div><div class="el-desc">Rectángulo. Objeto del mundo real con existencia propia.</div></div>
+        </div>
+        <div class="el-card">
+          <div class="shape-diamond"></div>
+          <div><div class="el-name" style="color:var(--col-relation-text)">Relación</div><div class="el-desc">Rombo. Asociación entre dos o más entidades.</div></div>
+        </div>
+        <div class="el-card">
+          <div class="shape-oval"></div>
+          <div><div class="el-name" style="color:var(--col-attr-text)">Atributo</div><div class="el-desc">Elipse. Propiedad o característica de una entidad.</div></div>
+        </div>
+        <div class="el-card">
+          <div class="shape-oval-dash"></div>
+          <div><div class="el-name" style="color:var(--col-attr-derived-border)">Atrib. derivado</div><div class="el-desc">Elipse punteada. Se calcula a partir de otros atributos.</div></div>
+        </div>
+        <div class="el-card">
+          <div class="shape-oval-double"></div>
+          <div><div class="el-name" style="color:var(--col-attr-multi-border)">Atrib. multivalor</div><div class="el-desc">Elipse doble. Puede tener varios valores.</div></div>
+        </div>
+        <div class="el-card">
+          <div class="shape-rect-double"></div>
+          <div><div class="el-name" style="color:var(--col-weakent-text)">Entidad débil</div><div class="el-desc">Rectángulo doble. Sin clave primaria propia.</div></div>
+        </div>
+      </div>
+
+      <button class="btn-main" id="btnStartGame" style="max-width:340px;margin:0 auto;">▶ EMPEZAR (10 PROBLEMAS)</button>
+    </div>
+  </div>
+
+  <!-- ========== GAME SCREEN ========== -->
+  <div class="screen" id="gameScreen">
+
+    <div class="hud">
+      <div>
+        <span class="hud-label">Puntos</span>
+        <span class="hud-score" id="scoreVal">0</span>
+      </div>
+      <div>
+        <span class="hud-label">Problema</span>
+        <span class="hud-prob" id="probNum">1/10</span>
+      </div>
+      <div class="prog-bar-wrap">
+        <span class="hud-label">Progreso</span>
+        <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
+      </div>
+      <div>
+        <span class="hud-phase" id="phaseLabel">FASE 1</span>
+      </div>
+    </div>
+
+    <!-- Phase stepper -->
+    <div class="phase-stepper">
+      <span class="phase-label">FASE 1</span>
+      <div class="phase-step active" id="ps1"></div>
+      <div class="phase-step" id="ps2"></div>
+      <span class="phase-label">FASE 2</span>
+    </div>
+
+    <!-- Problem text -->
+    <div class="problem-card">
+      <div class="problem-label" id="probLabel">PROBLEMA 1</div>
+      <div class="problem-text" id="probText"></div>
+    </div>
+
+    <!-- PHASE 1 content -->
+    <div id="phase1Content">
+      <div class="instruction-box">
+        <strong>FASE 1 — IDENTIFICAR:</strong> Toca cada palabra resaltada y clasifícala como <strong style="color:var(--col-entity-text)">Entidad</strong>, <strong style="color:var(--col-relation-text)">Relación</strong> o <strong style="color:var(--col-attr-text)">Atributo</strong>.
+      </div>
+
+      <div class="legend-row">
+        <div class="legend-item">
+          <div class="legend-shape ls-rect">E</div>
+          <span style="color:var(--col-entity-text);font-size:13px;">Entidad (rectángulo)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-shape ls-diamond"></div>
+          <span style="color:var(--col-relation-text);font-size:13px;">Relación (rombo)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-shape ls-oval">a</div>
+          <span style="color:var(--col-attr-text);font-size:13px;">Atributo (elipse)</span>
+        </div>
+      </div>
+
+      <!-- Token list -->
+      <div class="tokens-area" id="tokensArea"></div>
+
+      <!-- Inline type picker (shown when token selected) -->
+      <div id="typePicker" style="display:none;margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:700;">Clasificar "<span id="pickerWord" style="color:var(--accent)"></span>" como:</div>
+        <div class="type-selector">
+          <button class="type-btn type-btn-entity" onclick="classifySelected('entity')">▣ Entidad</button>
+          <button class="type-btn type-btn-relation" onclick="classifySelected('relation')">◈ Relación</button>
+          <button class="type-btn type-btn-attr" onclick="classifySelected('attr')">◯ Atributo</button>
+        </div>
+      </div>
+
+      <div class="feedback-panel" id="p1Feedback"></div>
+
+      <button class="btn-main" id="btnCheckP1" disabled>✔ COMPROBAR FASE 1</button>
+    </div>
+
+    <!-- PHASE 2 content -->
+    <div id="phase2Content" style="display:none;">
+      <div class="diagram-instruction">
+        <strong>FASE 2 — DIAGRAMA:</strong> Arrastra cada elemento desde la paleta izquierda hasta la zona correcta del diagrama (indicada con línea punteada). Las conexiones ya están dibujadas.
+      </div>
+
+      <div class="diagram-workspace">
+        <!-- Palette -->
+        <div class="palette">
+          <div class="palette-title">Elementos</div>
+          <div class="palette-items" id="paletteItems"></div>
+        </div>
+        <!-- Canvas -->
+        <div class="canvas-wrap" id="canvasWrap">
+          <svg class="diagram-svg" id="diagramSvg" viewBox="0 0 560 400" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="dropZonesContainer"></div>
+        </div>
+      </div>
+
+      <div class="feedback-panel" id="p2Feedback"></div>
+      <button class="btn-main btn-secondary" id="btnCheckP2" disabled>✔ COMPROBAR DIAGRAMA</button>
+    </div>
+
+  </div>
+
+  <!-- ========== RESULTS SCREEN ========== -->
+  <div class="screen" id="resultsScreen">
+    <div class="results-content">
+      <div class="result-emoji" id="resEmoji">🏆</div>
+      <div class="result-title" id="resTitle" style="color:var(--accent3)">¡MISIÓN COMPLETADA!</div>
+      <div class="result-score-box">
+        <span class="result-score-label">PUNTUACIÓN FINAL</span>
+        <span class="result-score-val" id="resScore">0</span>
+        <div class="result-grade" id="resGrade"></div>
+      </div>
+      <div class="result-stats">
+        <div class="rs-card"><span class="rs-val" id="rsCorrect">0</span><span class="rs-lbl">✅ Correctas</span></div>
+        <div class="rs-card"><span class="rs-val" id="rsWrong">0</span><span class="rs-lbl">❌ Incorrectas</span></div>
+        <div class="rs-card"><span class="rs-val" id="rsProbs">10</span><span class="rs-lbl">📋 Problemas</span></div>
+      </div>
+      <button class="btn-main" id="btnRestart" style="max-width:340px;margin:0 auto;">🔄 JUGAR DE NUEVO</button>
+      <button class="btn-main btn-secondary" id="btnMenu" style="max-width:340px;margin:8px auto 0;">🏠 MENÚ</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ================================================================
+// DATA — 10 problems
+// Each problem has:
+//   text: string with {{term}} placeholders
+//   terms: [{word, type: 'entity'|'relation'|'attr'}]
+//   diagram: { nodes: [{id, label, type, x, y, w, h}], edges: [{from,to}], zones: [{id, x, y, w, h, termId}] }
+// ================================================================
+
+const PROBLEMS = [
+  // ── 1 ──────────────────────────────────────────────────────────
+  {
+    id: 1,
+    title: "Videojuegos y Desarrolladoras",
+    text: "Una {{desarrolladora}} puede crear varios {{videojuego}}s. De cada videojuego se conoce su {{título}}, {{género}} y {{año_lanzamiento}}. De cada desarrolladora se almacena su {{nombre}} y {{país}}.",
+    terms: [
+      {id:"desarrolladora", word:"desarrolladora", type:"entity"},
+      {id:"videojuego",     word:"videojuego",     type:"entity"},
+      {id:"titulo",         word:"título",          type:"attr"},
+      {id:"genero",         word:"género",          type:"attr"},
+      {id:"anio",           word:"año_lanzamiento", type:"attr"},
+      {id:"nombre",         word:"nombre",          type:"attr"},
+      {id:"pais",           word:"país",            type:"attr"},
+    ],
+    diagram: {
+      // SVG connections
+      edges: [
+        {from:"e_dev",    to:"rel_crea"},
+        {from:"rel_crea", to:"e_game"},
+        {from:"e_dev",    to:"a_nombre"},
+        {from:"e_dev",    to:"a_pais"},
+        {from:"e_game",   to:"a_titulo"},
+        {from:"e_game",   to:"a_genero"},
+        {from:"e_game",   to:"a_anio"},
+      ],
+      nodes: [
+        {id:"e_dev",    label:"desarrolladora", type:"entity",   x:100, y:180, w:130, h:44},
+        {id:"rel_crea", label:"crea",           type:"relation", x:255, y:180, w:80,  h:44},
+        {id:"e_game",   label:"videojuego",     type:"entity",   x:405, y:180, w:120, h:44},
+        {id:"a_nombre", label:"nombre",         type:"attr",     x:60,  y:60,  w:90,  h:36},
+        {id:"a_pais",   label:"país",           type:"attr",     x:60,  y:300, w:90,  h:36},
+        {id:"a_titulo", label:"título",         type:"attr",     x:370, y:60,  w:90,  h:36},
+        {id:"a_genero", label:"género",         type:"attr",     x:470, y:110, w:90,  h:36},
+        {id:"a_anio",   label:"año_lanzamiento",type:"attr",     x:480, y:280, w:90,  h:36},
+      ],
+      // zones: where to drop, linked to which term
+      zones: [
+        {id:"z_dev",    nodeId:"e_dev",    termId:"desarrolladora"},
+        {id:"z_game",   nodeId:"e_game",   termId:"videojuego"},
+        {id:"z_titulo", nodeId:"a_titulo", termId:"titulo"},
+        {id:"z_genero", nodeId:"a_genero", termId:"genero"},
+        {id:"z_anio",   nodeId:"a_anio",   termId:"anio"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_pais",   nodeId:"a_pais",   termId:"pais"},
+      ]
+    }
+  },
+
+  // ── 2 ──────────────────────────────────────────────────────────
+  {
+    id: 2,
+    title: "Biblioteca",
+    text: "Una {{biblioteca}} gestiona {{libro}}s. Cada libro tiene un {{ISBN}}, un {{título}} y un {{año}}. Los {{socio}}s pueden {{prestar}} libros. Del socio se almacena su {{dni}} y {{nombre}}.",
+    terms: [
+      {id:"biblioteca", word:"biblioteca", type:"entity"},
+      {id:"libro",      word:"libro",      type:"entity"},
+      {id:"isbn",       word:"ISBN",       type:"attr"},
+      {id:"titulo",     word:"título",     type:"attr"},
+      {id:"anio",       word:"año",        type:"attr"},
+      {id:"socio",      word:"socio",      type:"entity"},
+      {id:"prestar",    word:"prestar",    type:"relation"},
+      {id:"dni",        word:"dni",        type:"attr"},
+      {id:"nombre",     word:"nombre",     type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_socio",   to:"rel_prest"},
+        {from:"rel_prest", to:"e_libro"},
+        {from:"e_libro",   to:"a_isbn"},
+        {from:"e_libro",   to:"a_titulo"},
+        {from:"e_libro",   to:"a_anio"},
+        {from:"e_socio",   to:"a_dni"},
+        {from:"e_socio",   to:"a_nombre"},
+      ],
+      nodes: [
+        {id:"e_socio",    label:"socio",     type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_prest",  label:"presta",    type:"relation", x:245, y:190, w:90,  h:44},
+        {id:"e_libro",    label:"libro",     type:"entity",   x:410, y:190, w:110, h:44},
+        {id:"a_dni",      label:"dni",       type:"attr",     x:40,  y:70,  w:80,  h:36},
+        {id:"a_nombre",   label:"nombre",    type:"attr",     x:40,  y:310, w:90,  h:36},
+        {id:"a_isbn",     label:"ISBN",      type:"attr",     x:370, y:70,  w:80,  h:36},
+        {id:"a_titulo",   label:"título",    type:"attr",     x:480, y:130, w:80,  h:36},
+        {id:"a_anio",     label:"año",       type:"attr",     x:480, y:280, w:80,  h:36},
+      ],
+      zones: [
+        {id:"z_socio",  nodeId:"e_socio",  termId:"socio"},
+        {id:"z_libro",  nodeId:"e_libro",  termId:"libro"},
+        {id:"z_isbn",   nodeId:"a_isbn",   termId:"isbn"},
+        {id:"z_titulo", nodeId:"a_titulo", termId:"titulo"},
+        {id:"z_anio",   nodeId:"a_anio",   termId:"anio"},
+        {id:"z_dni",    nodeId:"a_dni",    termId:"dni"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+      ]
+    }
+  },
+
+  // ── 3 ──────────────────────────────────────────────────────────
+  {
+    id: 3,
+    title: "Empresa y Empleados",
+    text: "Una {{empresa}} tiene varios {{departamento}}s. Cada departamento {{alberga}} a muchos {{empleado}}s. Del empleado se registra su {{nif}}, {{nombre}} y {{salario}}. Del departamento se guarda su {{codigo}} y {{ubicación}}.",
+    terms: [
+      {id:"empresa",     word:"empresa",     type:"entity"},
+      {id:"depart",      word:"departamento",type:"entity"},
+      {id:"alberga",     word:"alberga",     type:"relation"},
+      {id:"empleado",    word:"empleado",    type:"entity"},
+      {id:"nif",         word:"nif",         type:"attr"},
+      {id:"nombre",      word:"nombre",      type:"attr"},
+      {id:"salario",     word:"salario",     type:"attr"},
+      {id:"codigo",      word:"codigo",      type:"attr"},
+      {id:"ubicacion",   word:"ubicación",   type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_dep",     to:"rel_alb"},
+        {from:"rel_alb",   to:"e_emp"},
+        {from:"e_dep",     to:"a_cod"},
+        {from:"e_dep",     to:"a_ubic"},
+        {from:"e_emp",     to:"a_nif"},
+        {from:"e_emp",     to:"a_nombre"},
+        {from:"e_emp",     to:"a_salario"},
+      ],
+      nodes: [
+        {id:"e_dep",    label:"departamento", type:"entity",   x:80,  y:190, w:130, h:44},
+        {id:"rel_alb",  label:"alberga",      type:"relation", x:265, y:190, w:90,  h:44},
+        {id:"e_emp",    label:"empleado",     type:"entity",   x:430, y:190, w:110, h:44},
+        {id:"a_cod",    label:"codigo",       type:"attr",     x:40,  y:70,  w:90,  h:36},
+        {id:"a_ubic",   label:"ubicación",    type:"attr",     x:30,  y:310, w:90,  h:36},
+        {id:"a_nif",    label:"nif",          type:"attr",     x:390, y:60,  w:80,  h:36},
+        {id:"a_nombre", label:"nombre",       type:"attr",     x:490, y:130, w:80,  h:36},
+        {id:"a_salario",label:"salario",      type:"attr",     x:490, y:280, w:90,  h:36},
+      ],
+      zones: [
+        {id:"z_dep",     nodeId:"e_dep",    termId:"depart"},
+        {id:"z_emp",     nodeId:"e_emp",    termId:"empleado"},
+        {id:"z_cod",     nodeId:"a_cod",    termId:"codigo"},
+        {id:"z_ubic",    nodeId:"a_ubic",   termId:"ubicacion"},
+        {id:"z_nif",     nodeId:"a_nif",    termId:"nif"},
+        {id:"z_nombre",  nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_salario", nodeId:"a_salario",termId:"salario"},
+      ]
+    }
+  },
+
+  // ── 4 ──────────────────────────────────────────────────────────
+  {
+    id: 4,
+    title: "Tienda Online",
+    text: "Una tienda online registra {{cliente}}s y {{producto}}s. Los clientes {{compran}} productos. De cada cliente se guarda su {{email}} y {{dirección}}. De cada producto se guarda su {{referencia}}, {{nombre}} y {{precio}}.",
+    terms: [
+      {id:"cliente",   word:"cliente",    type:"entity"},
+      {id:"producto",  word:"producto",   type:"entity"},
+      {id:"compran",   word:"compran",    type:"relation"},
+      {id:"email",     word:"email",      type:"attr"},
+      {id:"dir",       word:"dirección",  type:"attr"},
+      {id:"ref",       word:"referencia", type:"attr"},
+      {id:"nombre",    word:"nombre",     type:"attr"},
+      {id:"precio",    word:"precio",     type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_cli",  to:"rel_comp"},
+        {from:"rel_comp",to:"e_prod"},
+        {from:"e_cli",  to:"a_email"},
+        {from:"e_cli",  to:"a_dir"},
+        {from:"e_prod", to:"a_ref"},
+        {from:"e_prod", to:"a_nombre"},
+        {from:"e_prod", to:"a_precio"},
+      ],
+      nodes: [
+        {id:"e_cli",    label:"cliente",    type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_comp", label:"compra",     type:"relation", x:250, y:190, w:90,  h:44},
+        {id:"e_prod",   label:"producto",   type:"entity",   x:415, y:190, w:110, h:44},
+        {id:"a_email",  label:"email",      type:"attr",     x:40,  y:70,  w:80,  h:36},
+        {id:"a_dir",    label:"dirección",  type:"attr",     x:30,  y:305, w:90,  h:36},
+        {id:"a_ref",    label:"referencia", type:"attr",     x:380, y:60,  w:90,  h:36},
+        {id:"a_nombre", label:"nombre",     type:"attr",     x:490, y:120, w:80,  h:36},
+        {id:"a_precio", label:"precio",     type:"attr",     x:490, y:290, w:80,  h:36},
+      ],
+      zones: [
+        {id:"z_cli",    nodeId:"e_cli",    termId:"cliente"},
+        {id:"z_prod",   nodeId:"e_prod",   termId:"producto"},
+        {id:"z_email",  nodeId:"a_email",  termId:"email"},
+        {id:"z_dir",    nodeId:"a_dir",    termId:"dir"},
+        {id:"z_ref",    nodeId:"a_ref",    termId:"ref"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_precio", nodeId:"a_precio", termId:"precio"},
+      ]
+    }
+  },
+
+  // ── 5 ──────────────────────────────────────────────────────────
+  {
+    id: 5,
+    title: "Hospital",
+    text: "Un {{hospital}} atiende a {{paciente}}s. Cada paciente {{es_atendido_por}} un {{médico}}. Del paciente se almacena su {{nss}}, {{nombre}} y {{fecha_nacimiento}}. Del médico se guarda su {{número_colegiado}} y {{especialidad}}.",
+    terms: [
+      {id:"hospital",  word:"hospital",          type:"entity"},
+      {id:"paciente",  word:"paciente",           type:"entity"},
+      {id:"atiende",   word:"es_atendido_por",    type:"relation"},
+      {id:"medico",    word:"médico",             type:"entity"},
+      {id:"nss",       word:"nss",                type:"attr"},
+      {id:"nombre",    word:"nombre",             type:"attr"},
+      {id:"fnac",      word:"fecha_nacimiento",   type:"attr"},
+      {id:"ncol",      word:"número_colegiado",   type:"attr"},
+      {id:"espec",     word:"especialidad",       type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_pac",  to:"rel_at"},
+        {from:"rel_at", to:"e_med"},
+        {from:"e_pac",  to:"a_nss"},
+        {from:"e_pac",  to:"a_nombre"},
+        {from:"e_pac",  to:"a_fnac"},
+        {from:"e_med",  to:"a_ncol"},
+        {from:"e_med",  to:"a_espec"},
+      ],
+      nodes: [
+        {id:"e_pac",   label:"paciente",         type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_at",  label:"atiende",          type:"relation", x:248, y:190, w:94,  h:44},
+        {id:"e_med",   label:"médico",           type:"entity",   x:415, y:190, w:110, h:44},
+        {id:"a_nss",   label:"nss",              type:"attr",     x:30,  y:70,  w:80,  h:36},
+        {id:"a_nombre",label:"nombre",           type:"attr",     x:30,  y:170, w:80,  h:36},
+        {id:"a_fnac",  label:"fecha_nacim.",     type:"attr",     x:30,  y:310, w:90,  h:36},
+        {id:"a_ncol",  label:"nº_colegiado",     type:"attr",     x:460, y:70,  w:100, h:36},
+        {id:"a_espec", label:"especialidad",     type:"attr",     x:460, y:300, w:100, h:36},
+      ],
+      zones: [
+        {id:"z_pac",    nodeId:"e_pac",    termId:"paciente"},
+        {id:"z_med",    nodeId:"e_med",    termId:"medico"},
+        {id:"z_nss",    nodeId:"a_nss",    termId:"nss"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_fnac",   nodeId:"a_fnac",   termId:"fnac"},
+        {id:"z_ncol",   nodeId:"a_ncol",   termId:"ncol"},
+        {id:"z_espec",  nodeId:"a_espec",  termId:"espec"},
+      ]
+    }
+  },
+
+  // ── 6 ──────────────────────────────────────────────────────────
+  {
+    id: 6,
+    title: "Aeropuerto",
+    text: "Los {{vuelo}}s {{despegan_de}} un {{aeropuerto}}. Cada vuelo tiene un {{código}}, una {{fecha}} y un {{destino}}. Los {{pasajero}}s {{reservan}} vuelos. Del pasajero se almacena su {{pasaporte}} y {{nombre}}.",
+    terms: [
+      {id:"vuelo",      word:"vuelo",         type:"entity"},
+      {id:"desp",       word:"despegan_de",   type:"relation"},
+      {id:"aero",       word:"aeropuerto",    type:"entity"},
+      {id:"codigo",     word:"código",        type:"attr"},
+      {id:"fecha",      word:"fecha",         type:"attr"},
+      {id:"destino",    word:"destino",       type:"attr"},
+      {id:"pasajero",   word:"pasajero",      type:"entity"},
+      {id:"reservan",   word:"reservan",      type:"relation"},
+      {id:"pasaporte",  word:"pasaporte",     type:"attr"},
+      {id:"nombre",     word:"nombre",        type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_pas",   to:"rel_res"},
+        {from:"rel_res", to:"e_vuelo"},
+        {from:"e_vuelo", to:"a_cod"},
+        {from:"e_vuelo", to:"a_fecha"},
+        {from:"e_vuelo", to:"a_dest"},
+        {from:"e_pas",   to:"a_pasap"},
+        {from:"e_pas",   to:"a_nombre"},
+      ],
+      nodes: [
+        {id:"e_pas",    label:"pasajero",    type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_res",  label:"reserva",     type:"relation", x:248, y:190, w:90,  h:44},
+        {id:"e_vuelo",  label:"vuelo",       type:"entity",   x:410, y:190, w:110, h:44},
+        {id:"a_pasap",  label:"pasaporte",   type:"attr",     x:40,  y:70,  w:90,  h:36},
+        {id:"a_nombre", label:"nombre",      type:"attr",     x:30,  y:305, w:80,  h:36},
+        {id:"a_cod",    label:"código",      type:"attr",     x:370, y:60,  w:80,  h:36},
+        {id:"a_fecha",  label:"fecha",       type:"attr",     x:490, y:120, w:80,  h:36},
+        {id:"a_dest",   label:"destino",     type:"attr",     x:490, y:290, w:80,  h:36},
+      ],
+      zones: [
+        {id:"z_pas",    nodeId:"e_pas",    termId:"pasajero"},
+        {id:"z_vuelo",  nodeId:"e_vuelo",  termId:"vuelo"},
+        {id:"z_pasap",  nodeId:"a_pasap",  termId:"pasaporte"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_cod",    nodeId:"a_cod",    termId:"codigo"},
+        {id:"z_fecha",  nodeId:"a_fecha",  termId:"fecha"},
+        {id:"z_dest",   nodeId:"a_dest",   termId:"destino"},
+      ]
+    }
+  },
+
+  // ── 7 ──────────────────────────────────────────────────────────
+  {
+    id: 7,
+    title: "Universidad",
+    text: "Una {{universidad}} tiene varios {{profesor}}es. Los profesores {{imparten}} {{asignatura}}s. De cada asignatura se conoce su {{código}}, {{nombre}} y {{créditos}}. Del profesor se guarda su {{dni}} y {{categoría}}.",
+    terms: [
+      {id:"uni",      word:"universidad",  type:"entity"},
+      {id:"prof",     word:"profesor",     type:"entity"},
+      {id:"imparten", word:"imparten",     type:"relation"},
+      {id:"asig",     word:"asignatura",   type:"entity"},
+      {id:"cod",      word:"código",       type:"attr"},
+      {id:"nombre",   word:"nombre",       type:"attr"},
+      {id:"cred",     word:"créditos",     type:"attr"},
+      {id:"dni",      word:"dni",          type:"attr"},
+      {id:"cat",      word:"categoría",    type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_prof",  to:"rel_imp"},
+        {from:"rel_imp", to:"e_asig"},
+        {from:"e_prof",  to:"a_dni"},
+        {from:"e_prof",  to:"a_cat"},
+        {from:"e_asig",  to:"a_cod"},
+        {from:"e_asig",  to:"a_nombre"},
+        {from:"e_asig",  to:"a_cred"},
+      ],
+      nodes: [
+        {id:"e_prof",  label:"profesor",   type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_imp", label:"imparte",    type:"relation", x:248, y:190, w:90,  h:44},
+        {id:"e_asig",  label:"asignatura", type:"entity",   x:410, y:190, w:110, h:44},
+        {id:"a_dni",   label:"dni",        type:"attr",     x:30,  y:70,  w:80,  h:36},
+        {id:"a_cat",   label:"categoría",  type:"attr",     x:30,  y:305, w:80,  h:36},
+        {id:"a_cod",   label:"código",     type:"attr",     x:370, y:60,  w:80,  h:36},
+        {id:"a_nombre",label:"nombre",     type:"attr",     x:490, y:120, w:80,  h:36},
+        {id:"a_cred",  label:"créditos",   type:"attr",     x:490, y:290, w:80,  h:36},
+      ],
+      zones: [
+        {id:"z_prof",   nodeId:"e_prof",   termId:"prof"},
+        {id:"z_asig",   nodeId:"e_asig",   termId:"asig"},
+        {id:"z_dni",    nodeId:"a_dni",    termId:"dni"},
+        {id:"z_cat",    nodeId:"a_cat",    termId:"cat"},
+        {id:"z_cod",    nodeId:"a_cod",    termId:"cod"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_cred",   nodeId:"a_cred",   termId:"cred"},
+      ]
+    }
+  },
+
+  // ── 8 ──────────────────────────────────────────────────────────
+  {
+    id: 8,
+    title: "Red Social",
+    text: "En una red social, los {{usuario}}s pueden {{seguir}} a otros {{usuario}}s. De cada usuario se almacena su {{nick}}, {{email}} y {{fecha_registro}}. Los usuarios {{publican}} {{publicación}}es. De cada publicación se guarda su {{texto}} y {{fecha}}.",
+    terms: [
+      {id:"usuario",  word:"usuario",         type:"entity"},
+      {id:"seguir",   word:"seguir",          type:"relation"},
+      {id:"nick",     word:"nick",            type:"attr"},
+      {id:"email",    word:"email",           type:"attr"},
+      {id:"freg",     word:"fecha_registro",  type:"attr"},
+      {id:"publi",    word:"publicación",     type:"entity"},
+      {id:"publican", word:"publican",        type:"relation"},
+      {id:"texto",    word:"texto",           type:"attr"},
+      {id:"fecha",    word:"fecha",           type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_user",  to:"rel_pub"},
+        {from:"rel_pub", to:"e_post"},
+        {from:"e_user",  to:"a_nick"},
+        {from:"e_user",  to:"a_email"},
+        {from:"e_user",  to:"a_freg"},
+        {from:"e_post",  to:"a_texto"},
+        {from:"e_post",  to:"a_fecha"},
+      ],
+      nodes: [
+        {id:"e_user",  label:"usuario",      type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_pub", label:"publica",      type:"relation", x:248, y:190, w:90,  h:44},
+        {id:"e_post",  label:"publicación",  type:"entity",   x:410, y:190, w:120, h:44},
+        {id:"a_nick",  label:"nick",         type:"attr",     x:30,  y:70,  w:80,  h:36},
+        {id:"a_email", label:"email",        type:"attr",     x:30,  y:190, w:80,  h:36},
+        {id:"a_freg",  label:"fecha_reg.",   type:"attr",     x:30,  y:310, w:90,  h:36},
+        {id:"a_texto", label:"texto",        type:"attr",     x:480, y:90,  w:80,  h:36},
+        {id:"a_fecha", label:"fecha",        type:"attr",     x:480, y:290, w:80,  h:36},
+      ],
+      zones: [
+        {id:"z_user",  nodeId:"e_user",  termId:"usuario"},
+        {id:"z_post",  nodeId:"e_post",  termId:"publi"},
+        {id:"z_nick",  nodeId:"a_nick",  termId:"nick"},
+        {id:"z_email", nodeId:"a_email", termId:"email"},
+        {id:"z_freg",  nodeId:"a_freg",  termId:"freg"},
+        {id:"z_texto", nodeId:"a_texto", termId:"texto"},
+        {id:"z_fecha", nodeId:"a_fecha", termId:"fecha"},
+      ]
+    }
+  },
+
+  // ── 9 ──────────────────────────────────────────────────────────
+  {
+    id: 9,
+    title: "Préstamos Bancarios",
+    text: "Un {{banco}} gestiona {{préstamo}}s. Cada préstamo tiene un {{número_préstamo}}, {{importe}} y {{fecha_inicio}}. Los {{cliente}}s {{solicitan}} préstamos. Un préstamo tiene varios {{pago}}s. De cada pago se conoce su {{número_pago}}, {{importe_pago}} y {{fecha_pago}}.",
+    terms: [
+      {id:"banco",    word:"banco",           type:"entity"},
+      {id:"prestamo", word:"préstamo",        type:"entity"},
+      {id:"numprest", word:"número_préstamo", type:"attr"},
+      {id:"importe",  word:"importe",         type:"attr"},
+      {id:"finicio",  word:"fecha_inicio",    type:"attr"},
+      {id:"cliente",  word:"cliente",         type:"entity"},
+      {id:"solicitan",word:"solicitan",       type:"relation"},
+      {id:"pago",     word:"pago",            type:"entity"},
+      {id:"numpago",  word:"número_pago",     type:"attr"},
+      {id:"imppago",  word:"importe_pago",    type:"attr"},
+      {id:"fechpago", word:"fecha_pago",      type:"attr"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_cli",   to:"rel_sol"},
+        {from:"rel_sol", to:"e_prest"},
+        {from:"e_prest", to:"a_num"},
+        {from:"e_prest", to:"a_imp"},
+        {from:"e_prest", to:"a_fi"},
+        {from:"e_pago",  to:"a_npago"},
+        {from:"e_pago",  to:"a_ipago"},
+        {from:"e_pago",  to:"a_fpago"},
+        {from:"e_prest", to:"e_pago"},
+      ],
+      nodes: [
+        {id:"e_cli",   label:"cliente",    type:"entity",   x:50,  y:190, w:100, h:44},
+        {id:"rel_sol", label:"solicita",   type:"relation", x:205, y:190, w:85,  h:44},
+        {id:"e_prest", label:"préstamo",   type:"entity",   x:355, y:190, w:110, h:44},
+        {id:"e_pago",  label:"pago",       type:"entity",   x:355, y:330, w:90,  h:36},
+        {id:"a_num",   label:"nº_préstamo",type:"attr",     x:305, y:60,  w:100, h:36},
+        {id:"a_imp",   label:"importe",    type:"attr",     x:430, y:80,  w:80,  h:36},
+        {id:"a_fi",    label:"fecha_ini.", type:"attr",     x:490, y:190, w:80,  h:36},
+        {id:"a_npago", label:"nº_pago",    type:"attr",     x:240, y:330, w:90,  h:36},
+        {id:"a_ipago", label:"imp_pago",   type:"attr",     x:460, y:330, w:90,  h:36},
+        {id:"a_fpago", label:"fecha_pago", type:"attr",     x:370, y:380, w:90,  h:30},
+      ],
+      zones: [
+        {id:"z_cli",    nodeId:"e_cli",   termId:"cliente"},
+        {id:"z_prest",  nodeId:"e_prest", termId:"prestamo"},
+        {id:"z_pago",   nodeId:"e_pago",  termId:"pago"},
+        {id:"z_num",    nodeId:"a_num",   termId:"numprest"},
+        {id:"z_imp",    nodeId:"a_imp",   termId:"importe"},
+        {id:"z_fi",     nodeId:"a_fi",    termId:"finicio"},
+        {id:"z_npago",  nodeId:"a_npago", termId:"numpago"},
+        {id:"z_ipago",  nodeId:"a_ipago", termId:"imppago"},
+        {id:"z_fpago",  nodeId:"a_fpago", termId:"fechpago"},
+      ]
+    }
+  },
+
+  // ── 10 ──────────────────────────────────────────────────────────
+  {
+    id: 10,
+    title: "Torneo de eSports",
+    text: "Un {{torneo}} tiene varios {{equipo}}s. Cada equipo {{inscribe}} a sus {{jugador}}es. De cada jugador se almacena su {{alias}}, {{país}} y {{ranking}}. De cada equipo se guarda su {{nombre}} y {{patrocinador}}. Los equipos {{compiten_contra}} otros equipos.",
+    terms: [
+      {id:"torneo",    word:"torneo",           type:"entity"},
+      {id:"equipo",    word:"equipo",           type:"entity"},
+      {id:"inscribe",  word:"inscribe",         type:"relation"},
+      {id:"jugador",   word:"jugador",          type:"entity"},
+      {id:"alias",     word:"alias",            type:"attr"},
+      {id:"pais",      word:"país",             type:"attr"},
+      {id:"ranking",   word:"ranking",          type:"attr"},
+      {id:"nombre",    word:"nombre",           type:"attr"},
+      {id:"patroc",    word:"patrocinador",     type:"attr"},
+      {id:"compiten",  word:"compiten_contra",  type:"relation"},
+    ],
+    diagram: {
+      edges: [
+        {from:"e_eq",   to:"rel_ins"},
+        {from:"rel_ins",to:"e_jug"},
+        {from:"e_eq",   to:"a_nombre"},
+        {from:"e_eq",   to:"a_patroc"},
+        {from:"e_jug",  to:"a_alias"},
+        {from:"e_jug",  to:"a_pais"},
+        {from:"e_jug",  to:"a_ranking"},
+      ],
+      nodes: [
+        {id:"e_eq",     label:"equipo",      type:"entity",   x:80,  y:190, w:110, h:44},
+        {id:"rel_ins",  label:"inscribe",    type:"relation", x:248, y:190, w:90,  h:44},
+        {id:"e_jug",    label:"jugador",     type:"entity",   x:410, y:190, w:110, h:44},
+        {id:"a_nombre", label:"nombre",      type:"attr",     x:30,  y:70,  w:80,  h:36},
+        {id:"a_patroc", label:"patrocinador",type:"attr",     x:30,  y:310, w:100, h:36},
+        {id:"a_alias",  label:"alias",       type:"attr",     x:370, y:60,  w:80,  h:36},
+        {id:"a_pais",   label:"país",        type:"attr",     x:490, y:120, w:80,  h:36},
+        {id:"a_ranking",label:"ranking",     type:"attr",     x:490, y:290, w:80,  h:36},
+      ],
+      zones: [
+        {id:"z_eq",     nodeId:"e_eq",     termId:"equipo"},
+        {id:"z_jug",    nodeId:"e_jug",    termId:"jugador"},
+        {id:"z_nombre", nodeId:"a_nombre", termId:"nombre"},
+        {id:"z_patroc", nodeId:"a_patroc", termId:"patroc"},
+        {id:"z_alias",  nodeId:"a_alias",  termId:"alias"},
+        {id:"z_pais",   nodeId:"a_pais",   termId:"pais"},
+        {id:"z_ranking",nodeId:"a_ranking",termId:"ranking"},
+      ]
+    }
+  },
+];
+
+// ================================================================
+// GAME STATE
+// ================================================================
+let gs = {
+  problemIdx: 0,
+  score: 0,
+  totalCorrect: 0,
+  totalWrong: 0,
+  phase: 1,
+  selectedTokenId: null,
+  p1Classifications: {},    // termId -> type chosen by user
+  p2Placements: {},         // zoneId -> termId placed there
+  draggingTermId: null,
+  p1Checked: false,
+  p2Checked: false,
+};
+
+const TYPE_LABEL = { entity:'Entidad', relation:'Relación', attr:'Atributo' };
+const TYPE_ICON  = { entity:'▣', relation:'◈', attr:'◯' };
+
+// ================================================================
+// SCREEN SWITCHING
+// ================================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ================================================================
+// RENDER PROBLEM TEXT with clickable spans
+// ================================================================
+function renderProblemText(problem) {
+  let txt = problem.text;
+  problem.terms.forEach(t => {
+    txt = txt.replace(new RegExp('\\{\\{' + t.id + '\\}\\}', 'g'),
+      `<span class="highlight" data-termid="${t.id}" onclick="selectToken('${t.id}')">${t.word}</span>`);
+  });
+  document.getElementById('probText').innerHTML = txt;
+}
+
+// ================================================================
+// PHASE 1 — Tokens
+// ================================================================
+function renderTokens(problem) {
+  const area = document.getElementById('tokensArea');
+  area.innerHTML = '';
+  problem.terms.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'token unclassified';
+    div.id = 'tok_' + t.id;
+    div.textContent = t.word;
+    div.onclick = () => selectToken(t.id);
+    area.appendChild(div);
+  });
+}
+
+function selectToken(termId) {
+  gs.selectedTokenId = termId;
+  const problem = PROBLEMS[gs.problemIdx];
+  const term = problem.terms.find(t => t.id === termId);
+  document.getElementById('pickerWord').textContent = term.word;
+  document.getElementById('typePicker').style.display = 'block';
+
+  // highlight selected token
+  document.querySelectorAll('.token').forEach(t => t.style.outline = 'none');
+  const tok = document.getElementById('tok_' + termId);
+  if(tok) tok.style.outline = '2px solid var(--accent)';
+}
+
+function classifySelected(type) {
+  if(!gs.selectedTokenId) return;
+  const termId = gs.selectedTokenId;
+  gs.p1Classifications[termId] = type;
+
+  // Update token appearance
+  const tok = document.getElementById('tok_' + termId);
+  if(tok) {
+    tok.className = 'token type-' + type;
+    tok.style.outline = 'none';
+    tok.innerHTML = TYPE_ICON[type] + ' ' + tok.textContent.replace(/^[▣◈◯]\s/,'');
+  }
+
+  // Update inline highlight
+  document.querySelectorAll(`.highlight[data-termid="${termId}"]`).forEach(el => {
+    el.className = 'highlight tagged-' + type;
+  });
+
+  document.getElementById('typePicker').style.display = 'none';
+  gs.selectedTokenId = null;
+
+  // Enable check button when all classified
+  const problem = PROBLEMS[gs.problemIdx];
+  const allDone = problem.terms.every(t => gs.p1Classifications[t.id]);
+  document.getElementById('btnCheckP1').disabled = !allDone;
+}
+
+function checkPhase1() {
+  if(gs.p1Checked) return;
+  gs.p1Checked = true;
+  const problem = PROBLEMS[gs.problemIdx];
+  let correct = 0, wrong = 0;
+  const items = [];
+
+  problem.terms.forEach(t => {
+    const chosen = gs.p1Classifications[t.id];
+    const ok = chosen === t.type;
+    if(ok) { correct++; gs.totalCorrect++; }
+    else { wrong++; gs.totalWrong++; }
+
+    const tok = document.getElementById('tok_' + t.id);
+    if(tok) {
+      tok.classList.add(ok ? 'correct-anim' : 'wrong-anim');
+      if(!ok) tok.className = 'token type-' + t.type + ' wrong-anim';
+    }
+    items.push({word: t.word, ok, expected: t.type, chosen});
+  });
+
+  const points = correct * 10;
+  gs.score += points;
+  document.getElementById('scoreVal').textContent = gs.score;
+
+  // Feedback
+  const fb = document.getElementById('p1Feedback');
+  fb.className = 'feedback-panel show ' + (wrong === 0 ? 'feedback-correct' : 'feedback-wrong');
+  const title = wrong === 0 ? '✅ ¡PERFECTO! +' + points + ' pts' : '⚠ ' + correct + ' correctas, ' + wrong + ' incorrectas — +' + points + ' pts';
+  let html = `<div class="feedback-title">${title}</div><div class="feedback-items">`;
+  items.forEach(it => {
+    if(!it.ok) html += `<span class="fb-item fb-wrong">${it.word}: tú→${TYPE_LABEL[it.chosen]}, correcto→${TYPE_LABEL[it.expected]}</span>`;
+  });
+  html += '</div>';
+  if(wrong > 0) html += `<div class="fb-hint">💡 Recuerda: <strong>Entidades</strong> son objetos con existencia propia (rectángulos), <strong>Relaciones</strong> son vínculos entre entidades (rombos) y <strong>Atributos</strong> son propiedades (elipses).</div>`;
+  fb.innerHTML = html;
+
+  document.getElementById('btnCheckP1').textContent = '→ PASAR A FASE 2';
+  document.getElementById('btnCheckP1').onclick = startPhase2;
+  document.getElementById('btnCheckP1').disabled = false;
+}
+
+// ================================================================
+// PHASE 2 — Diagram builder
+// ================================================================
+function startPhase2() {
+  gs.phase = 2;
+  document.getElementById('phase1Content').style.display = 'none';
+  document.getElementById('phase2Content').style.display = 'block';
+  document.getElementById('phaseLabel').textContent = 'FASE 2';
+  document.getElementById('ps1').className = 'phase-step done';
+  document.getElementById('ps2').className = 'phase-step active';
+
+  const problem = PROBLEMS[gs.problemIdx];
+  renderDiagram(problem);
+  renderPalette(problem);
+}
+
+// ---- SVG helpers ----
+function cx(node) { return node.x + node.w / 2; }
+function cy(node) { return node.y + node.h / 2; }
+
+function edgePath(n1, n2) {
+  return `M${cx(n1)},${cy(n1)} L${cx(n2)},${cy(n2)}`;
+}
+
+function renderDiagram(problem) {
+  const svg = document.getElementById('diagramSvg');
+  svg.innerHTML = '';
+
+  const nodeMap = {};
+  problem.diagram.nodes.forEach(n => nodeMap[n.id] = n);
+
+  // Draw edges first (below nodes)
+  const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+  problem.diagram.edges.forEach(e => {
+    const n1 = nodeMap[e.from], n2 = nodeMap[e.to];
+    if(!n1 || !n2) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', cx(n1)); line.setAttribute('y1', cy(n1));
+    line.setAttribute('x2', cx(n2)); line.setAttribute('y2', cy(n2));
+    line.setAttribute('stroke', 'rgba(150,150,220,0.5)');
+    line.setAttribute('stroke-width', '1.5');
+    edgeGroup.appendChild(line);
+  });
+  svg.appendChild(edgeGroup);
+
+  // Draw node outlines (shapes) without labels — zones will overlay
+  const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+  problem.diagram.nodes.forEach(n => {
+    const isZone = problem.diagram.zones.some(z => z.nodeId === n.id);
+    if(isZone) return; // zones drawn as HTML overlays
+
+    // Non-zone nodes (relations that are labelled but not draggable in this simplified version)
+    if(n.type === 'relation') {
+      // Draw diamond
+      const hw = n.w / 2, hh = n.h / 2;
+      const px = cx(n), py = cy(n);
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      poly.setAttribute('points', `${px},${py-hh} ${px+hw},${py} ${px},${py+hh} ${px-hw},${py}`);
+      poly.setAttribute('fill', 'var(--col-relation)');
+      poly.setAttribute('stroke', 'var(--col-relation-border)');
+      poly.setAttribute('stroke-width', '2');
+      nodeGroup.appendChild(poly);
+
+      const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+      label.setAttribute('x', cx(n)); label.setAttribute('y', cy(n)+4);
+      label.setAttribute('text-anchor','middle');
+      label.setAttribute('font-size','11');
+      label.setAttribute('font-family','Nunito,sans-serif');
+      label.setAttribute('font-weight','700');
+      label.setAttribute('fill', 'var(--col-relation-text)');
+      label.textContent = n.label;
+      nodeGroup.appendChild(label);
+    }
+  });
+  svg.appendChild(nodeGroup);
+
+  // Draw drop zones as HTML overlays
+  const container = document.getElementById('dropZonesContainer');
+  container.innerHTML = '';
+  const canvasWrap = document.getElementById('canvasWrap');
+  const svgEl = document.getElementById('diagramSvg');
+  const svgW = 560, svgH = 400;
+
+  function toPercent(val, total) { return (val / total * 100) + '%'; }
+
+  problem.diagram.zones.forEach(z => {
+    const node = nodeMap[z.nodeId];
+    if(!node) return;
+    const div = document.createElement('div');
+    div.className = 'drop-zone';
+    div.id = 'zone_' + z.id;
+    div.dataset.zoneid = z.id;
+    div.dataset.termid = z.termId;
+    div.dataset.nodetype = node.type;
+    div.style.left   = toPercent(node.x, svgW);
+    div.style.top    = toPercent(node.y, svgH);
+    div.style.width  = toPercent(node.w, svgW);
+    div.style.height = toPercent(node.h, svgH);
+
+    // Draw correct shape outline
+    if(node.type === 'entity') {
+      div.style.borderRadius = '4px';
+    } else if(node.type === 'relation') {
+      div.style.borderRadius = '0';
+      div.style.transform = 'rotate(45deg)';
+      div.style.overflow = 'visible';
+    } else {
+      div.style.borderRadius = '50%';
+    }
+
+    const label = document.createElement('div');
+    label.className = 'zone-label';
+    label.textContent = '?';
+    div.appendChild(label);
+
+    // Drop handlers
+    div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('drag-over'); });
+    div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+    div.addEventListener('drop', e => { e.preventDefault(); div.classList.remove('drag-over'); dropOnZone(z.id); });
+    div.addEventListener('click', () => dropOnZone(z.id));
+
+    container.appendChild(div);
+  });
+}
+
+function renderPalette(problem) {
+  const area = document.getElementById('paletteItems');
+  area.innerHTML = '';
+  problem.terms.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'palette-token type-' + t.type;
+    div.id = 'pt_' + t.id;
+    div.dataset.termid = t.id;
+    div.draggable = true;
+    div.innerHTML = `<span class="pt-shape">${TYPE_ICON[t.type]}</span><span>${t.word}</span>`;
+    div.addEventListener('dragstart', e => { gs.draggingTermId = t.id; e.dataTransfer.setData('text/plain', t.id); });
+    div.addEventListener('dragend', () => { gs.draggingTermId = null; });
+    div.addEventListener('click', () => {
+      gs.draggingTermId = t.id;
+      // highlight
+      document.querySelectorAll('.palette-token').forEach(p => p.style.outline='none');
+      div.style.outline = '2px solid var(--accent)';
+    });
+    area.appendChild(div);
+  });
+}
+
+function dropOnZone(zoneId) {
+  const termId = gs.draggingTermId;
+  if(!termId) return;
+  gs.draggingTermId = null;
+
+  // Remove from previous zone if placed elsewhere
+  Object.keys(gs.p2Placements).forEach(zid => {
+    if(gs.p2Placements[zid] === termId) {
+      delete gs.p2Placements[zid];
+      const oldZone = document.getElementById('zone_' + zid);
+      if(oldZone) {
+        oldZone.className = 'drop-zone';
+        oldZone.querySelector('.zone-label').textContent = '?';
+        // restore shape
+        const problem = PROBLEMS[gs.problemIdx];
+        const z = problem.diagram.zones.find(z => z.id === zid);
+        const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
+        if(node.type === 'entity') oldZone.style.borderRadius = '4px';
+        else if(node.type === 'relation') oldZone.style.borderRadius = '0';
+        else oldZone.style.borderRadius = '50%';
+      }
+    }
+  });
+
+  gs.p2Placements[zoneId] = termId;
+
+  const problem = PROBLEMS[gs.problemIdx];
+  const term = problem.terms.find(t => t.id === termId);
+  const zoneEl = document.getElementById('zone_' + zoneId);
+  const z = problem.diagram.zones.find(z => z.id === zoneId);
+  const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
+
+  zoneEl.className = 'drop-zone filled filled-' + node.type;
+  // restore correct border-radius for type
+  if(node.type === 'entity') zoneEl.style.borderRadius = '4px';
+  else if(node.type === 'relation') zoneEl.style.borderRadius = '0';
+  else zoneEl.style.borderRadius = '50%';
+  zoneEl.querySelector('.zone-label').textContent = term.word;
+
+  // Mark palette token as placed
+  document.querySelectorAll('.palette-token').forEach(p => p.style.outline='none');
+  const ptEl = document.getElementById('pt_' + termId);
+  if(ptEl) ptEl.classList.add('placed');
+
+  // Enable check if all zones filled
+  const allFilled = problem.diagram.zones.every(z => gs.p2Placements[z.id]);
+  document.getElementById('btnCheckP2').disabled = !allFilled;
+}
+
+function checkPhase2() {
+  if(gs.p2Checked) return;
+  gs.p2Checked = true;
+
+  const problem = PROBLEMS[gs.problemIdx];
+  let correct = 0, wrong = 0;
+  const errors = [];
+
+  problem.diagram.zones.forEach(z => {
+    const placed = gs.p2Placements[z.id];
+    const ok = placed === z.termId;
+    const zoneEl = document.getElementById('zone_' + z.id);
+    if(zoneEl) {
+      zoneEl.classList.add(ok ? 'correct' : 'wrong');
+      if(!ok) {
+        const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
+        const placedTerm = problem.terms.find(t => t.id === placed);
+        const correctTerm = problem.terms.find(t => t.id === z.termId);
+        errors.push(`${node.label}: colocaste "${placedTerm?.word || '?'}", correcto: "${correctTerm?.word}"`);
+      }
+    }
+    if(ok) { correct++; gs.totalCorrect++; }
+    else { wrong++; gs.totalWrong++; }
+  });
+
+  const points = correct * 15;
+  gs.score += points;
+  document.getElementById('scoreVal').textContent = gs.score;
+
+  const fb = document.getElementById('p2Feedback');
+  fb.className = 'feedback-panel show ' + (wrong === 0 ? 'feedback-correct' : 'feedback-wrong');
+  const title = wrong === 0 ? '✅ ¡DIAGRAMA PERFECTO! +' + points + ' pts' : '⚠ ' + correct + ' correctas, ' + wrong + ' incorrectas — +' + points + ' pts';
+  let html = `<div class="feedback-title">${title}</div>`;
+  if(errors.length) {
+    html += '<div class="feedback-items">';
+    errors.forEach(e => html += `<span class="fb-item fb-wrong">${e}</span>`);
+    html += '</div>';
+  }
+  fb.innerHTML = html;
+
+  if(wrong === 0) confetti();
+
+  document.getElementById('btnCheckP2').textContent = gs.problemIdx < PROBLEMS.length - 1 ? '→ SIGUIENTE PROBLEMA' : '🏆 VER RESULTADOS';
+  document.getElementById('btnCheckP2').onclick = nextProblem;
+  document.getElementById('btnCheckP2').disabled = false;
+}
+
+function nextProblem() {
+  gs.problemIdx++;
+  if(gs.problemIdx >= PROBLEMS.length) {
+    showResults();
+    return;
+  }
+  loadProblem(gs.problemIdx);
+}
+
+// ================================================================
+// LOAD PROBLEM
+// ================================================================
+function loadProblem(idx) {
+  gs.phase = 1;
+  gs.selectedTokenId = null;
+  gs.p1Classifications = {};
+  gs.p2Placements = {};
+  gs.draggingTermId = null;
+  gs.p1Checked = false;
+  gs.p2Checked = false;
+
+  const problem = PROBLEMS[idx];
+  const total = PROBLEMS.length;
+
+  document.getElementById('probNum').textContent = (idx+1) + '/' + total;
+  document.getElementById('progFill').style.width = (idx / total * 100) + '%';
+  document.getElementById('probLabel').textContent = 'PROBLEMA ' + (idx+1) + ': ' + problem.title.toUpperCase();
+  document.getElementById('phaseLabel').textContent = 'FASE 1';
+  document.getElementById('ps1').className = 'phase-step active';
+  document.getElementById('ps2').className = 'phase-step';
+
+  // Reset phases
+  document.getElementById('phase1Content').style.display = 'block';
+  document.getElementById('phase2Content').style.display = 'none';
+
+  // Reset feedback
+  document.getElementById('p1Feedback').className = 'feedback-panel';
+  document.getElementById('p2Feedback').className = 'feedback-panel';
+
+  // Reset button
+  document.getElementById('btnCheckP1').textContent = '✔ COMPROBAR FASE 1';
+  document.getElementById('btnCheckP1').onclick = checkPhase1;
+  document.getElementById('btnCheckP1').disabled = true;
+  document.getElementById('btnCheckP2').textContent = '✔ COMPROBAR DIAGRAMA';
+  document.getElementById('btnCheckP2').onclick = checkPhase2;
+  document.getElementById('btnCheckP2').disabled = true;
+
+  renderProblemText(problem);
+  renderTokens(problem);
+  document.getElementById('typePicker').style.display = 'none';
+}
+
+// ================================================================
+// RESULTS
+// ================================================================
+function showResults() {
+  document.getElementById('progFill').style.width = '100%';
+  showScreen('resultsScreen');
+
+  const score = gs.score;
+  const pct = Math.round(gs.totalCorrect / (gs.totalCorrect + gs.totalWrong) * 100);
+  document.getElementById('resScore').textContent = score;
+  document.getElementById('rsCorrect').textContent = gs.totalCorrect;
+  document.getElementById('rsWrong').textContent = gs.totalWrong;
+  document.getElementById('rsProbs').textContent = PROBLEMS.length;
+
+  let grade, gColor, emoji, title;
+  if(pct >= 90) { grade='⭐⭐⭐ MAESTRO E-R'; gColor='rgba(179,255,77,0.15);color:var(--accent3);border:1px solid var(--accent3)'; emoji='🏆'; title='¡MAESTRO DEL DIAGRAMA!'; }
+  else if(pct >= 70) { grade='⭐⭐ MUY BIEN'; gColor='rgba(0,229,255,0.15);color:var(--accent);border:1px solid var(--accent)'; emoji='🎉'; title='¡MUY BUEN TRABAJO!'; }
+  else if(pct >= 50) { grade='⭐ APROBADO'; gColor='rgba(255,204,0,0.15);color:var(--warn);border:1px solid var(--warn)'; emoji='😤'; title='APROBADO — ¡A MEJORAR!'; }
+  else { grade='📚 SIGUE PRACTICANDO'; gColor='rgba(255,51,85,0.15);color:var(--red);border:1px solid var(--red)'; emoji='📖'; title='NECESITAS MÁS PRÁCTICA'; }
+
+  document.getElementById('resEmoji').textContent = emoji;
+  document.getElementById('resTitle').textContent = title;
+  const gradeEl = document.getElementById('resGrade');
+  gradeEl.textContent = grade;
+  gradeEl.style.cssText = `background:${gColor};padding:8px 18px;border-radius:6px;font-family:'Press Start 2P',monospace;font-size:10px;display:inline-block;margin-top:12px;`;
+
+  if(pct >= 70) confetti();
+}
+
+// ================================================================
+// CONFETTI
+// ================================================================
+function confetti() {
+  const colors = ['#00e5ff','#ff4dff','#b3ff4d','#ffcc00','#ff3355'];
+  for(let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};--dur:${Math.random()*2+1.5}s;--delay:${Math.random()*0.8}s;width:${Math.random()*8+4}px;height:${Math.random()*8+4}px;`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+}
+
+// ================================================================
+// INIT
+// ================================================================
+document.getElementById('btnStartGame').onclick = () => {
+  gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false };
+  showScreen('gameScreen');
+  loadProblem(0);
+};
+
+document.getElementById('btnRestart').onclick = () => {
+  gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false };
+  showScreen('gameScreen');
+  loadProblem(0);
+};
+
+document.getElementById('btnMenu').onclick = () => showScreen('startScreen');
+
+// Grid background animation (subtle)
+</script>
+</body>
+</html>
