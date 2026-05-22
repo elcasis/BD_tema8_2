@@ -1340,7 +1340,8 @@ function renderProblemText(problem) {
 function renderTokens(problem) {
   const area = document.getElementById('tokensArea');
   area.innerHTML = '';
-  problem.terms.forEach(t => {
+  const shuffled = [...problem.terms].sort(() => Math.random() - 0.5);
+  shuffled.forEach(t => {
     const div = document.createElement('div');
     div.className = 'token unclassified';
     div.id = 'tok_' + t.id;
@@ -1567,7 +1568,8 @@ function renderDiagram(problem) {
 function renderPalette(problem) {
   const area = document.getElementById('paletteItems');
   area.innerHTML = '';
-  problem.terms.forEach(t => {
+  const shuffled = [...problem.terms].sort(() => Math.random() - 0.5);
+  shuffled.forEach(t => {
     const div = document.createElement('div');
     div.className = 'palette-token type-' + t.type;
     div.id = 'pt_' + t.id;
@@ -1692,14 +1694,46 @@ function checkPhase2() {
   let correct = 0, wrong = 0;
   const errors = [];
 
+  // For each attr node, find which entity/relation node it connects to
+  function getParentNodeId(nodeId) {
+    const edge = problem.diagram.edges.find(e => e.to === nodeId || e.from === nodeId);
+    if(!edge) return null;
+    const otherId = edge.to === nodeId ? edge.from : edge.to;
+    const other = problem.diagram.nodes.find(n => n.id === otherId);
+    if(!other) return null;
+    if(other.type === 'entity' || other.type === 'relation') return otherId;
+    return null;
+  }
+
+  // Build map: parentNodeId -> Set of termIds that are attrs connected to it
+  const parentAttrMap = {};
+  problem.diagram.zones.forEach(z => {
+    const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
+    if(!node || node.type !== 'attr') return;
+    const parentId = getParentNodeId(z.nodeId);
+    if(!parentId) return;
+    if(!parentAttrMap[parentId]) parentAttrMap[parentId] = new Set();
+    parentAttrMap[parentId].add(z.termId);
+  });
+
   problem.diagram.zones.forEach(z => {
     const placed = gs.p2Placements[z.id];
-    const ok = placed === z.termId;
+    const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
     const zoneEl = document.getElementById('zone_' + z.id);
+
+    let ok;
+    if(node.type === 'attr') {
+      // Any attr belonging to the same parent entity/relation is valid
+      const parentId = getParentNodeId(z.nodeId);
+      ok = parentId && parentAttrMap[parentId] && parentAttrMap[parentId].has(placed);
+    } else {
+      // Entity or relation zones: exact match required
+      ok = placed === z.termId;
+    }
+
     if(zoneEl) {
       zoneEl.classList.add(ok ? 'correct' : 'wrong');
       if(!ok) {
-        const node = problem.diagram.nodes.find(n => n.id === z.nodeId);
         const placedTerm = problem.terms.find(t => t.id === placed);
         const correctTerm = problem.terms.find(t => t.id === z.termId);
         errors.push(`${node.label}: colocaste "${placedTerm?.word || '?'}", correcto: "${correctTerm?.word}"`);
