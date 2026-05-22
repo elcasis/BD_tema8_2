@@ -686,6 +686,9 @@ body::after {
       <div>
         <span class="hud-phase" id="phaseLabel">FASE 1</span>
       </div>
+      <div>
+        <button id="btnSkip" title="Saltar al siguiente ejercicio" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'Press Start 2P',monospace;font-size:8px;cursor:pointer;padding:6px 10px;transition:all 0.2s;letter-spacing:1px;white-space:nowrap;">SALTAR →</button>
+      </div>
     </div>
 
     <!-- Phase stepper -->
@@ -1771,6 +1774,13 @@ document.getElementById('btnStartGame').onclick = () => {
   gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false };
   showScreen('gameScreen');
   loadProblem(0);
+};
+
+document.getElementById('btnSkip').onclick = () => {
+  if(!confirm('¿Saltar este ejercicio? No se sumarán puntos.')) return;
+  if(gs.problemIdx >= PROBLEMS.length - 1) { showResults(); return; }
+  gs.problemIdx++;
+  loadProblem(gs.problemIdx);
 };
 
 document.getElementById('btnRestart').onclick = () => {
