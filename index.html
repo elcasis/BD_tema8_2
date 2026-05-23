@@ -2097,11 +2097,19 @@ function showScreen(id) {
 // ================================================================
 function renderProblemText(problem) {
   let txt = problem.text;
+  // Replace by term id AND by term word (handles mismatches like {{supermercado}} with id:"super")
   problem.terms.forEach(t => {
-    txt = txt.replace(new RegExp('\\{\\{' + t.id + '\\}\\}', 'g'),
-      `<span class="highlight" data-termid="${t.id}" onclick="selectToken('${t.id}')">${t.word}</span>`);
+    const span = `<span class="highlight" data-termid="${t.id}" onclick="selectToken('${t.id}')">${t.word}</span>`;
+    txt = txt.replace(new RegExp('\\{\\{' + escapeRegex(t.id) + '\\}\\}', 'g'), span);
+    txt = txt.replace(new RegExp('\\{\\{' + escapeRegex(t.word) + '\\}\\}', 'g'), span);
   });
+  // Strip any remaining {{xxx}} that had no matching term — show the inner word as plain text
+  txt = txt.replace(/\{\{([^}]+)\}\}/g, '$1');
   document.getElementById('probText').innerHTML = txt;
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // ================================================================
