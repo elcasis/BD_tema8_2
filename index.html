@@ -397,6 +397,85 @@ body::after {
 .filled-relation .zone-label { color: var(--col-relation-text); }
 .filled-attr .zone-label { color: var(--col-attr-text); }
 
+/* ============ PHASE 3: CARDINALITIES ============ */
+.cardinality-instruction {
+  background: rgba(255,204,0,0.05);
+  border: 1px solid rgba(255,204,0,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.cardinality-instruction strong { color: var(--warn); }
+
+.card-legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.card-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: 'Press Start 2P', monospace;
+  cursor: pointer;
+  border: 2px solid;
+  transition: all 0.15s;
+  user-select: none;
+}
+.card-chip.card-11 { background: rgba(0,229,255,0.1); border-color: var(--accent); color: var(--accent); }
+.card-chip.card-1N { background: rgba(179,255,77,0.1); border-color: var(--accent3); color: var(--accent3); }
+.card-chip.card-N1 { background: rgba(255,100,0,0.12); border-color: #ff9944; color: #ff9944; }
+.card-chip.card-NM { background: rgba(255,77,255,0.1); border-color: var(--accent2); color: var(--accent2); }
+.card-chip.selected-chip { transform: scale(1.1); box-shadow: 0 0 14px currentColor; }
+.card-chip:hover { opacity: 0.85; }
+
+.p3-diagram-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.p3-diagram-svg { width: 100%; display: block; }
+
+/* Edge cardinality slots — small buttons on each edge */
+.card-slot {
+  position: absolute;
+  width: 46px;
+  height: 24px;
+  border-radius: 12px;
+  border: 2px dashed rgba(255,204,0,0.4);
+  background: rgba(255,204,0,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  font-family: 'Press Start 2P', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+  transform: translate(-50%, -50%);
+  color: rgba(255,204,0,0.35);
+  z-index: 10;
+}
+.card-slot:hover {
+  border-color: var(--warn);
+  background: rgba(255,204,0,0.12);
+  color: var(--warn);
+}
+.card-slot.filled-11 { border-style: solid; border-color: var(--accent); background: rgba(0,229,255,0.15); color: var(--accent); }
+.card-slot.filled-1N { border-style: solid; border-color: var(--accent3); background: rgba(179,255,77,0.15); color: var(--accent3); }
+.card-slot.filled-N1 { border-style: solid; border-color: #ff9944; background: rgba(255,100,0,0.15); color: #ff9944; }
+.card-slot.filled-NM { border-style: solid; border-color: var(--accent2); background: rgba(255,77,255,0.15); color: var(--accent2); }
+.card-slot.correct { animation: zone-correct 0.5s ease; border-color: var(--accent3); }
+.card-slot.wrong { animation: zone-wrong 0.5s ease; border-color: var(--red); }
+
 /* ============ FEEDBACK ============ */
 .feedback-panel {
   background: var(--panel);
@@ -697,6 +776,8 @@ body::after {
       <div class="phase-step active" id="ps1"></div>
       <div class="phase-step" id="ps2"></div>
       <span class="phase-label">FASE 2</span>
+      <div class="phase-step" id="ps3"></div>
+      <span class="phase-label">FASE 3</span>
     </div>
 
     <!-- Problem text -->
@@ -742,6 +823,7 @@ body::after {
       <div class="feedback-panel" id="p1Feedback"></div>
 
       <button class="btn-main" id="btnCheckP1" disabled>✔ COMPROBAR FASE 1</button>
+      <button class="btn-main btn-secondary" onclick="startPhase2()" style="margin-top:8px;border-color:var(--muted);color:var(--muted);font-size:9px;">⏭ SALTAR A FASE 2</button>
     </div>
 
     <!-- PHASE 2 content -->
@@ -768,6 +850,35 @@ body::after {
         <button class="btn-main" id="btnCheckP2" disabled style="flex:2;min-width:180px;">✔ COMPROBAR DIAGRAMA</button>
         <button class="btn-main btn-secondary" id="btnClearP2" style="flex:1;min-width:120px;border-color:var(--warn);color:var(--warn);">🗑 LIMPIAR TODO</button>
       </div>
+      <button class="btn-main btn-secondary" onclick="startPhase3()" style="margin-top:8px;border-color:var(--muted);color:var(--muted);font-size:9px;">⏭ SALTAR A FASE 3</button>
+    </div>
+
+    <!-- PHASE 3 content -->
+    <div id="phase3Content" style="display:none;">
+      <div class="cardinality-instruction">
+        <strong>FASE 3 — CARDINALIDADES:</strong> El diagrama ya está construido. Selecciona una cardinalidad de los botones de arriba y luego toca la etiqueta <span style="color:var(--warn)">?</span> en cada arista para colocarla. Las cardinalidades son la mínima y máxima participación de cada entidad en la relación.
+      </div>
+
+      <!-- Cardinality chips selector -->
+      <div class="card-legend">
+        <span style="font-size:12px;color:var(--muted);align-self:center;margin-right:4px;">Elegir:</span>
+        <div class="card-chip card-11" id="chip_11" onclick="selectCard('1,1')">(1,1)</div>
+        <div class="card-chip card-1N" id="chip_1N" onclick="selectCard('1,N')">(1,N)</div>
+        <div class="card-chip card-N1" id="chip_N1" onclick="selectCard('N,1')">(N,1)</div>
+        <div class="card-chip card-NM" id="chip_NM" onclick="selectCard('N,M')">(N,M)</div>
+      </div>
+
+      <div class="p3-diagram-wrap" id="p3DiagramWrap">
+        <svg class="p3-diagram-svg" id="p3Svg" viewBox="0 0 560 400" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="p3CardSlots"></div>
+      </div>
+
+      <div class="feedback-panel" id="p3Feedback"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-main" id="btnCheckP3" disabled style="flex:2;min-width:180px;">✔ COMPROBAR CARDINALIDADES</button>
+        <button class="btn-main btn-secondary" id="btnClearP3" style="flex:1;min-width:120px;border-color:var(--warn);color:var(--warn);">🗑 LIMPIAR</button>
+      </div>
+      <button class="btn-main btn-secondary" onclick="nextProblem()" style="margin-top:8px;border-color:var(--muted);color:var(--muted);font-size:9px;">⏭ SALTAR AL SIGUIENTE PROBLEMA</button>
     </div>
 
   </div>
@@ -2065,8 +2176,174 @@ const PROBLEMS = [
 ];
 
 // ================================================================
-// GAME STATE
+// CARDINALITY DATA per problem
+// Each entry: array of {edgeId, label (side near entity/rel), correct}
+// edgeId references a pair of node IDs from the diagram edges
+// cardSlots: [{id, from, to, pct (0..1 position on edge), correct}]
+// We define card slots as pairs: one near the FROM node, one near the TO node
+// For each relation edge we place TWO slots: one at 25% (near entity1) and one at 75% (near entity2)
 // ================================================================
+const CARD_DATA = {
+  // Problem 1 — Videojuegos y Desarrolladoras
+  // desarrolladora (1,1) ── crea ── (1,N) videojuego
+  1: [
+    {id:'cd1_a', from:'e_dev',    to:'rel_crea', t:0.25, correct:'1,1', label:'desarrolladora↔crea'},
+    {id:'cd1_b', from:'rel_crea', to:'e_game',   t:0.75, correct:'1,N', label:'crea↔videojuego'},
+  ],
+  // Problem 2 — Biblioteca
+  // socio (1,N) ── presta ── (1,N) libro
+  2: [
+    {id:'cd2_a', from:'e_socio',   to:'rel_prest', t:0.25, correct:'1,N', label:'socio↔presta'},
+    {id:'cd2_b', from:'rel_prest', to:'e_libro',   t:0.75, correct:'N,M', label:'presta↔libro'},
+  ],
+  // Problem 3 — Empresa y Empleados
+  // departamento (1,1) ── alberga ── (1,N) empleado
+  3: [
+    {id:'cd3_a', from:'e_dep',   to:'rel_alb', t:0.25, correct:'1,1', label:'departamento↔alberga'},
+    {id:'cd3_b', from:'rel_alb', to:'e_emp',   t:0.75, correct:'1,N', label:'alberga↔empleado'},
+  ],
+  // Problem 4 — Tienda Online
+  // cliente (1,N) ── compra ── (N,M) producto
+  4: [
+    {id:'cd4_a', from:'e_cli',    to:'rel_comp', t:0.25, correct:'1,N', label:'cliente↔compra'},
+    {id:'cd4_b', from:'rel_comp', to:'e_prod',   t:0.75, correct:'N,M', label:'compra↔producto'},
+  ],
+  // Problem 5 — Hospital
+  // paciente (N,1) ── atiende ── (1,N) médico
+  5: [
+    {id:'cd5_a', from:'e_pac',  to:'rel_at', t:0.25, correct:'N,1', label:'paciente↔atiende'},
+    {id:'cd5_b', from:'rel_at', to:'e_med',  t:0.75, correct:'1,N', label:'atiende↔médico'},
+  ],
+  // Problem 6 — Aeropuerto
+  // pasajero (1,N) ── reserva ── (N,M) vuelo
+  6: [
+    {id:'cd6_a', from:'e_pas',   to:'rel_res', t:0.25, correct:'1,N', label:'pasajero↔reserva'},
+    {id:'cd6_b', from:'rel_res', to:'e_vuelo', t:0.75, correct:'N,M', label:'reserva↔vuelo'},
+  ],
+  // Problem 7 — Universidad
+  // profesor (1,N) ── imparte ── (N,M) asignatura
+  7: [
+    {id:'cd7_a', from:'e_prof',  to:'rel_imp', t:0.25, correct:'1,N', label:'profesor↔imparte'},
+    {id:'cd7_b', from:'rel_imp', to:'e_asig',  t:0.75, correct:'N,M', label:'imparte↔asignatura'},
+  ],
+  // Problem 8 — Red Social
+  // usuario (1,N) ── publica ── (N,M) publicación
+  8: [
+    {id:'cd8_a', from:'e_user',  to:'rel_pub', t:0.25, correct:'1,N', label:'usuario↔publica'},
+    {id:'cd8_b', from:'rel_pub', to:'e_post',  t:0.75, correct:'N,M', label:'publica↔publicación'},
+  ],
+  // Problem 9 — Préstamos Bancarios
+  // cliente (1,N) ── solicita ── (N,M) préstamo
+  9: [
+    {id:'cd9_a', from:'e_cli',   to:'rel_sol', t:0.25, correct:'1,N', label:'cliente↔solicita'},
+    {id:'cd9_b', from:'rel_sol', to:'e_prest', t:0.75, correct:'N,M', label:'solicita↔préstamo'},
+  ],
+  // Problem 10 — Torneo de eSports
+  // equipo (1,N) ── inscribe ── (N,M) jugador
+  10: [
+    {id:'cd10_a', from:'e_eq',    to:'rel_ins', t:0.25, correct:'1,N', label:'equipo↔inscribe'},
+    {id:'cd10_b', from:'rel_ins', to:'e_jug',   t:0.75, correct:'N,M', label:'inscribe↔jugador'},
+  ],
+  7: [
+    {id:'cd7_a', from:'e_eq',    to:'rel_ins', t:0.25, correct:'1,N', label:'equipo↔inscribe'},
+    {id:'cd7_b', from:'rel_ins', to:'e_jug',   t:0.75, correct:'N,M', label:'inscribe↔jugador'},
+  ],
+  // Problem 11 — Empleados y supervisores
+  11: [
+    {id:'cd11_a', from:'e_emp',   to:'rel_sup', t:0.25, correct:'N,1', label:'empleado↔supervisar'},
+    {id:'cd11_b', from:'rel_sup', to:'e_emp',   t:0.75, correct:'1,N', label:'supervisar↔empleado'},
+  ],
+  // Problem 12 — Supermercado
+  12: [
+    {id:'cd12_a', from:'e_prod',   to:'rel_pert', t:0.25, correct:'N,1', label:'producto↔pertenece'},
+    {id:'cd12_b', from:'rel_pert', to:'e_cat',    t:0.75, correct:'1,N', label:'pertenece↔categoria'},
+    {id:'cd12_c', from:'e_cli',    to:'rel_comp', t:0.25, correct:'1,N', label:'cliente↔compra'},
+    {id:'cd12_d', from:'rel_comp', to:'e_prod',   t:0.75, correct:'N,M', label:'compra↔producto'},
+  ],
+  // Problem 13 — Alumnos y Cursos
+  13: [
+    {id:'cd13_a', from:'e_alum',  to:'rel_mat',  t:0.25, correct:'1,N', label:'alumno↔matricula'},
+    {id:'cd13_b', from:'rel_mat', to:'e_curso',  t:0.75, correct:'N,M', label:'matricula↔curso'},
+  ],
+  // Problem 14 — Agencia de Viajes
+  14: [
+    {id:'cd14_a', from:'e_cli',    to:'rel_res',  t:0.25, correct:'1,N', label:'cliente↔reserva'},
+    {id:'cd14_b', from:'rel_res',  to:'e_viaje',  t:0.75, correct:'N,M', label:'reserva↔viaje'},
+    {id:'cd14_c', from:'e_viaje',  to:'rel_inc',  t:0.25, correct:'1,N', label:'viaje↔incluye'},
+    {id:'cd14_d', from:'rel_inc',  to:'e_hotel',  t:0.75, correct:'N,M', label:'incluye↔hotel'},
+  ],
+  // Problem 15 — Proyectos, Empleados y Roles (ternaria)
+  // empleado (N,M) ── trabaja_en ── (N,M) proyecto; rol (N,M) ── trabaja_en
+  15: [
+    {id:'cd15_a', from:'e_emp',    to:'rel_trab', t:0.25, correct:'N,M', label:'empleado↔trabaja_en'},
+    {id:'cd15_b', from:'e_proy',   to:'rel_trab', t:0.25, correct:'N,M', label:'proyecto↔trabaja_en'},
+  ],
+  // Problem 16 — Hospital Complejo
+  // medico (1,N) ── opera_en ── (N,M) quirofano; medico (1,N) ── atiende ── (N,M) paciente
+  16: [
+    {id:'cd16_a', from:'e_med',  to:'rel_op', t:0.25, correct:'1,N', label:'médico↔opera_en'},
+    {id:'cd16_b', from:'rel_op', to:'e_qui',  t:0.75, correct:'N,M', label:'opera_en↔quirofano'},
+    {id:'cd16_c', from:'e_med',  to:'rel_at', t:0.25, correct:'1,N', label:'médico↔atiende'},
+    {id:'cd16_d', from:'rel_at', to:'e_pac',  t:0.75, correct:'N,M', label:'atiende↔paciente'},
+  ],
+  // Problem 17 — Plataforma Streaming
+  // usuario (1,N) ── visualiza ── (N,M) contenido; contenido (N,1) ── pertenece ── (1,N) genero
+  17: [
+    {id:'cd17_a', from:'e_usu',   to:'rel_vis', t:0.25, correct:'1,N', label:'usuario↔visualiza'},
+    {id:'cd17_b', from:'rel_vis', to:'e_cont',  t:0.75, correct:'N,M', label:'visualiza↔contenido'},
+    {id:'cd17_c', from:'e_cont',  to:'rel_per', t:0.25, correct:'N,1', label:'contenido↔pertenece'},
+    {id:'cd17_d', from:'rel_per', to:'e_gen',   t:0.75, correct:'1,N', label:'pertenece↔genero'},
+  ],
+  // Problem 18 — Aerolínea
+  18: [
+    {id:'cd18_a', from:'e_pil',   to:'rel_pil',  t:0.25, correct:'1,N', label:'piloto↔pilota'},
+    {id:'cd18_b', from:'rel_pil', to:'e_avi',    t:0.75, correct:'N,M', label:'pilota↔avion'},
+    {id:'cd18_c', from:'e_pas',   to:'rel_res',  t:0.25, correct:'1,N', label:'pasajero↔reserva'},
+    {id:'cd18_d', from:'rel_res', to:'e_vue',    t:0.75, correct:'N,M', label:'reserva↔vuelo'},
+    {id:'cd18_e', from:'e_vue',   to:'rel_usa',  t:0.25, correct:'N,1', label:'vuelo↔usa'},
+    {id:'cd18_f', from:'rel_usa', to:'e_avi',    t:0.75, correct:'1,1', label:'usa↔avion'},
+  ],
+  // Problem 19 — Editorial
+  19: [
+    {id:'cd19_a', from:'e_aut',   to:'rel_esc',  t:0.25, correct:'1,N', label:'autor↔escribe'},
+    {id:'cd19_b', from:'rel_esc', to:'e_lib',    t:0.75, correct:'N,M', label:'escribe↔libro'},
+    {id:'cd19_c', from:'e_lib',   to:'rel_tra',  t:0.25, correct:'1,N', label:'libro↔trata_sobre'},
+    {id:'cd19_d', from:'rel_tra', to:'e_tem',    t:0.75, correct:'N,M', label:'trata_sobre↔tema'},
+  ],
+  // Problem 20 — Universidad
+  20: [
+    {id:'cd20_a', from:'e_fac',   to:'rel_of',   t:0.25, correct:'1,N', label:'facultad↔oferta'},
+    {id:'cd20_b', from:'rel_of',  to:'e_tit',    t:0.75, correct:'N,M', label:'oferta↔titulacion'},
+    {id:'cd20_c', from:'e_alum',  to:'rel_cur',  t:0.25, correct:'1,N', label:'alumno↔cursa'},
+    {id:'cd20_d', from:'rel_cur', to:'e_tit',    t:0.75, correct:'N,M', label:'cursa↔titulacion'},
+    {id:'cd20_e', from:'e_prof',  to:'rel_imp',  t:0.25, correct:'1,N', label:'profesor↔imparte'},
+    {id:'cd20_f', from:'rel_imp', to:'e_asig',   t:0.75, correct:'N,M', label:'imparte↔asignatura'},
+    {id:'cd20_g', from:'e_alum',  to:'rel_mat',  t:0.25, correct:'N,M', label:'alumno↔matricula'},
+    {id:'cd20_h', from:'rel_mat', to:'e_asig',   t:0.75, correct:'N,M', label:'matricula↔asignatura'},
+  ],
+};
+
+// fallback: build generic cardinality slots for any problem not explicitly defined
+function getCardSlots(problem) {
+  const pid = problem.id;
+  if(CARD_DATA[pid]) return CARD_DATA[pid];
+  // Auto-generate: for each edge between entity and relation, create two slots
+  const slots = [];
+  const nodeMap = {};
+  problem.diagram.nodes.forEach(n => nodeMap[n.id] = n);
+  let idx = 0;
+  problem.diagram.edges.forEach(e => {
+    const n1 = nodeMap[e.from], n2 = nodeMap[e.to];
+    if(!n1 || !n2) return;
+    if((n1.type === 'entity' && n2.type === 'relation') ||
+       (n1.type === 'relation' && n2.type === 'entity')) {
+      slots.push({id:'auto_'+idx+'_a', from:e.from, to:e.to, t:0.25, correct:'1,N', label:n1.label+'↔'+n2.label});
+      slots.push({id:'auto_'+idx+'_b', from:e.from, to:e.to, t:0.75, correct:'N,M', label:n1.label+'↔'+n2.label});
+      idx++;
+    }
+  });
+  return slots;
+}
 let gs = {
   problemIdx: 0,
   score: 0,
@@ -2079,6 +2356,10 @@ let gs = {
   draggingTermId: null,
   p1Checked: false,
   p2Checked: false,
+  // Phase 3
+  selectedCard: null,       // currently selected cardinality string e.g. '1,N'
+  p3Placements: {},         // slotId -> cardinality string
+  p3Checked: false,
 };
 
 const TYPE_LABEL = { entity:'Entidad', relation:'Relación', attr:'Atributo' };
@@ -2538,9 +2819,242 @@ function checkPhase2() {
 
   if(wrong === 0) confetti();
 
-  document.getElementById('btnCheckP2').textContent = gs.problemIdx < PROBLEMS.length - 1 ? '→ SIGUIENTE PROBLEMA' : '🏆 VER RESULTADOS';
-  document.getElementById('btnCheckP2').onclick = nextProblem;
+  document.getElementById('btnCheckP2').textContent = '→ PASAR A FASE 3';
+  document.getElementById('btnCheckP2').onclick = startPhase3;
   document.getElementById('btnCheckP2').disabled = false;
+}
+
+// ================================================================
+// PHASE 3 — Cardinalities
+// ================================================================
+function startPhase3() {
+  gs.phase = 3;
+  gs.selectedCard = null;
+  gs.p3Placements = {};
+  gs.p3Checked = false;
+
+  document.getElementById('phase2Content').style.display = 'none';
+  document.getElementById('phase3Content').style.display = 'block';
+  document.getElementById('phaseLabel').textContent = 'FASE 3';
+  document.getElementById('ps2').className = 'phase-step done';
+  document.getElementById('ps3').className = 'phase-step active';
+
+  // Reset feedback
+  document.getElementById('p3Feedback').className = 'feedback-panel';
+
+  // Reset buttons
+  document.getElementById('btnCheckP3').textContent = '✔ COMPROBAR CARDINALIDADES';
+  document.getElementById('btnCheckP3').onclick = checkPhase3;
+  document.getElementById('btnCheckP3').disabled = true;
+  document.getElementById('btnClearP3').disabled = false;
+  document.getElementById('btnClearP3').onclick = clearAllSlots;
+
+  // Reset chip selection
+  document.querySelectorAll('.card-chip').forEach(c => c.classList.remove('selected-chip'));
+
+  const problem = PROBLEMS[gs.problemIdx];
+  renderPhase3(problem);
+}
+
+function selectCard(card) {
+  gs.selectedCard = card;
+  document.querySelectorAll('.card-chip').forEach(c => c.classList.remove('selected-chip'));
+  const chipMap = {'1,1':'chip_11','1,N':'chip_1N','N,1':'chip_N1','N,M':'chip_NM'};
+  const el = document.getElementById(chipMap[card]);
+  if(el) el.classList.add('selected-chip');
+}
+
+function renderPhase3(problem) {
+  const svg = document.getElementById('p3Svg');
+  svg.innerHTML = '';
+
+  const nodeMap = {};
+  problem.diagram.nodes.forEach(n => nodeMap[n.id] = n);
+
+  // Draw all edges
+  const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+  problem.diagram.edges.forEach(e => {
+    const n1 = nodeMap[e.from], n2 = nodeMap[e.to];
+    if(!n1 || !n2) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', cx(n1)); line.setAttribute('y1', cy(n1));
+    line.setAttribute('x2', cx(n2)); line.setAttribute('y2', cy(n2));
+    line.setAttribute('stroke', 'rgba(150,150,220,0.5)');
+    line.setAttribute('stroke-width', '1.5');
+    edgeGroup.appendChild(line);
+  });
+  svg.appendChild(edgeGroup);
+
+  // Draw all nodes with their correct labels (phase 3 shows completed diagram)
+  const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+  problem.diagram.nodes.forEach(n => {
+    if(n.type === 'entity') {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', n.x); rect.setAttribute('y', n.y);
+      rect.setAttribute('width', n.w); rect.setAttribute('height', n.h);
+      rect.setAttribute('rx', '4');
+      rect.setAttribute('fill', 'var(--col-entity)');
+      rect.setAttribute('stroke', 'var(--col-entity-border)');
+      rect.setAttribute('stroke-width', '2');
+      nodeGroup.appendChild(rect);
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x', cx(n)); text.setAttribute('y', cy(n)+4);
+      text.setAttribute('text-anchor','middle');
+      text.setAttribute('font-size','11'); text.setAttribute('font-family','Nunito,sans-serif');
+      text.setAttribute('font-weight','700'); text.setAttribute('fill','var(--col-entity-text)');
+      text.textContent = n.label;
+      nodeGroup.appendChild(text);
+    } else if(n.type === 'relation') {
+      const hw = n.w/2, hh = n.h/2, px = cx(n), py = cy(n);
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      poly.setAttribute('points', `${px},${py-hh} ${px+hw},${py} ${px},${py+hh} ${px-hw},${py}`);
+      poly.setAttribute('fill','var(--col-relation)');
+      poly.setAttribute('stroke','var(--col-relation-border)');
+      poly.setAttribute('stroke-width','2');
+      nodeGroup.appendChild(poly);
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x', cx(n)); text.setAttribute('y', cy(n)+4);
+      text.setAttribute('text-anchor','middle');
+      text.setAttribute('font-size','10'); text.setAttribute('font-family','Nunito,sans-serif');
+      text.setAttribute('font-weight','700'); text.setAttribute('fill','var(--col-relation-text)');
+      text.textContent = n.label;
+      nodeGroup.appendChild(text);
+    } else {
+      // attr ellipse
+      const ell = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+      ell.setAttribute('cx', cx(n)); ell.setAttribute('cy', cy(n));
+      ell.setAttribute('rx', n.w/2); ell.setAttribute('ry', n.h/2);
+      ell.setAttribute('fill','var(--col-attr)');
+      ell.setAttribute('stroke','var(--col-attr-border)');
+      ell.setAttribute('stroke-width','2');
+      nodeGroup.appendChild(ell);
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x', cx(n)); text.setAttribute('y', cy(n)+4);
+      text.setAttribute('text-anchor','middle');
+      text.setAttribute('font-size','9'); text.setAttribute('font-family','Nunito,sans-serif');
+      text.setAttribute('font-weight','700'); text.setAttribute('fill','var(--col-attr-text)');
+      text.textContent = n.label;
+      nodeGroup.appendChild(text);
+    }
+  });
+  svg.appendChild(nodeGroup);
+
+  // Draw cardinality slots as HTML overlays
+  const container = document.getElementById('p3CardSlots');
+  container.innerHTML = '';
+  const svgW = 560, svgH = 400;
+
+  const slots = getCardSlots(problem);
+  slots.forEach(slot => {
+    const n1 = nodeMap[slot.from], n2 = nodeMap[slot.to];
+    if(!n1 || !n2) return;
+    const x1 = cx(n1), y1 = cy(n1), x2 = cx(n2), y2 = cy(n2);
+    const px = x1 + (x2 - x1) * slot.t;
+    const py = y1 + (y2 - y1) * slot.t;
+
+    const div = document.createElement('div');
+    div.className = 'card-slot';
+    div.id = 'cslot_' + slot.id;
+    div.dataset.slotid = slot.id;
+    div.style.left = (px / svgW * 100) + '%';
+    div.style.top  = (py / svgH * 100) + '%';
+    div.textContent = '?';
+
+    div.addEventListener('click', () => placeCard(slot.id));
+    container.appendChild(div);
+  });
+}
+
+function placeCard(slotId) {
+  if(gs.p3Checked) return;
+  if(!gs.selectedCard) {
+    // flash chips to prompt selection
+    document.querySelectorAll('.card-chip').forEach(c => {
+      c.style.transform = 'scale(1.05)';
+      setTimeout(() => c.style.transform = '', 300);
+    });
+    return;
+  }
+
+  gs.p3Placements[slotId] = gs.selectedCard;
+  const div = document.getElementById('cslot_' + slotId);
+  if(div) {
+    const ckey = gs.selectedCard.replace(',','');
+    div.className = 'card-slot filled-' + ckey;
+    div.textContent = '(' + gs.selectedCard + ')';
+  }
+
+  // Enable check button if all slots filled
+  const problem = PROBLEMS[gs.problemIdx];
+  const slots = getCardSlots(problem);
+  const allFilled = slots.every(s => {
+    const n1 = problem.diagram.nodes.find(n => n.id === s.from);
+    const n2 = problem.diagram.nodes.find(n => n.id === s.to);
+    return (!n1 || !n2) ? true : gs.p3Placements[s.id];
+  });
+  document.getElementById('btnCheckP3').disabled = !allFilled;
+}
+
+function clearAllSlots() {
+  const problem = PROBLEMS[gs.problemIdx];
+  const slots = getCardSlots(problem);
+  gs.p3Placements = {};
+  slots.forEach(slot => {
+    const div = document.getElementById('cslot_' + slot.id);
+    if(div) { div.className = 'card-slot'; div.textContent = '?'; }
+  });
+  document.getElementById('btnCheckP3').disabled = true;
+}
+
+function checkPhase3() {
+  if(gs.p3Checked) return;
+  gs.p3Checked = true;
+  document.getElementById('btnClearP3').disabled = true;
+
+  const problem = PROBLEMS[gs.problemIdx];
+  const slots = getCardSlots(problem);
+  let correct = 0, wrong = 0;
+  const errors = [];
+
+  slots.forEach(slot => {
+    const placed = gs.p3Placements[slot.id];
+    const ok = placed === slot.correct;
+    const div = document.getElementById('cslot_' + slot.id);
+    if(div) {
+      div.classList.add(ok ? 'correct' : 'wrong');
+      if(!ok) {
+        div.textContent = '(' + slot.correct + ')';
+        const ckey = slot.correct.replace(',','');
+        div.className = 'card-slot filled-' + ckey + ' wrong';
+        errors.push(`${slot.label}: pusiste "(${placed})", correcto: "(${slot.correct})"`);
+      }
+    }
+    if(ok) { correct++; gs.totalCorrect++; }
+    else { wrong++; gs.totalWrong++; }
+  });
+
+  const points = correct * 20;
+  gs.score += points;
+  document.getElementById('scoreVal').textContent = gs.score;
+
+  const fb = document.getElementById('p3Feedback');
+  fb.className = 'feedback-panel show ' + (wrong === 0 ? 'feedback-correct' : 'feedback-wrong');
+  const title = wrong === 0 ? '✅ ¡CARDINALIDADES PERFECTAS! +' + points + ' pts' : '⚠ ' + correct + ' correctas, ' + wrong + ' incorrectas — +' + points + ' pts';
+  let html = `<div class="feedback-title">${title}</div>`;
+  if(errors.length) {
+    html += '<div class="feedback-items">';
+    errors.forEach(e => html += `<span class="fb-item fb-wrong">${e}</span>`);
+    html += '</div>';
+    html += '<div class="fb-hint">💡 Recuerda: (1,1) exactamente uno, (1,N) uno o varios, (N,1) muchos a uno, (N,M) muchos a muchos.</div>';
+  }
+  fb.innerHTML = html;
+
+  if(wrong === 0) confetti();
+
+  const isLast = gs.problemIdx >= PROBLEMS.length - 1;
+  document.getElementById('btnCheckP3').textContent = isLast ? '🏆 VER RESULTADOS' : '→ SIGUIENTE PROBLEMA';
+  document.getElementById('btnCheckP3').onclick = nextProblem;
+  document.getElementById('btnCheckP3').disabled = false;
 }
 
 function nextProblem() {
@@ -2563,6 +3077,9 @@ function loadProblem(idx) {
   gs.draggingTermId = null;
   gs.p1Checked = false;
   gs.p2Checked = false;
+  gs.selectedCard = null;
+  gs.p3Placements = {};
+  gs.p3Checked = false;
 
   const problem = PROBLEMS[idx];
   const total = PROBLEMS.length;
@@ -2573,14 +3090,17 @@ function loadProblem(idx) {
   document.getElementById('phaseLabel').textContent = 'FASE 1';
   document.getElementById('ps1').className = 'phase-step active';
   document.getElementById('ps2').className = 'phase-step';
+  document.getElementById('ps3').className = 'phase-step';
 
   // Reset phases
   document.getElementById('phase1Content').style.display = 'block';
   document.getElementById('phase2Content').style.display = 'none';
+  document.getElementById('phase3Content').style.display = 'none';
 
   // Reset feedback
   document.getElementById('p1Feedback').className = 'feedback-panel';
   document.getElementById('p2Feedback').className = 'feedback-panel';
+  document.getElementById('p3Feedback').className = 'feedback-panel';
 
   // Reset button
   document.getElementById('btnCheckP1').textContent = '✔ COMPROBAR FASE 1';
@@ -2644,7 +3164,7 @@ function confetti() {
 // INIT
 // ================================================================
 document.getElementById('btnStartGame').onclick = () => {
-  gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false };
+  gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false, selectedCard:null, p3Placements:{}, p3Checked:false };
   showScreen('gameScreen');
   loadProblem(0);
 };
@@ -2657,7 +3177,7 @@ document.getElementById('btnSkip').onclick = () => {
 };
 
 document.getElementById('btnRestart').onclick = () => {
-  gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false };
+  gs = { problemIdx:0, score:0, totalCorrect:0, totalWrong:0, phase:1, selectedTokenId:null, p1Classifications:{}, p2Placements:{}, draggingTermId:null, p1Checked:false, p2Checked:false, selectedCard:null, p3Placements:{}, p3Checked:false };
   showScreen('gameScreen');
   loadProblem(0);
 };
